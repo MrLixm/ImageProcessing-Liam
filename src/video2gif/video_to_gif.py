@@ -66,7 +66,7 @@ class Dithering:
 
 class Settings(dict):
     """
-    A regular dictionary object with a fixed structure. Structure is verified
+    A regular dictionary object with to_reverse fixed structure. Structure is verified
     through ``validate()`` method.
     """
 
@@ -80,7 +80,7 @@ class Settings(dict):
         "speedup": False,
         "dithering": False,
         "loop": True,
-        "ffmpeg": FFMPEG
+        "ffmpeg": FFMPEG,
     }
 
     def __init__(self, *args, **kwargs):
@@ -132,16 +132,16 @@ class Settings(dict):
         command = [self.ffmpeg]
         command += ["-y"] if self["overwrite"] else ["-n"]
         command += ["-i"]
-        command += [f"\"{self.input}\""]
+        command += [f'"{self.input}"']
 
         # process options that depends on another one
-        _speedup = self['speedup']
+        _speedup = self["speedup"]
         if _speedup is not False or None:
-            _ss = self['start_time'] / _speedup
-            _t = self['duration'] / _speedup
+            _ss = self["start_time"] / _speedup
+            _t = self["duration"] / _speedup
         else:
-            _ss = self['start_time']
-            _t = self['duration']
+            _ss = self["start_time"]
+            _t = self["duration"]
 
         if self["start_time"]:
             command += [f"-ss {_ss}"]
@@ -173,10 +173,10 @@ class Settings(dict):
         if self["dithering"]:
             _filter += f"=dither={self['dithering']}"
 
-        command += [f"-vf \"{_filter}\""]
-        command += [f"\"{self.output}\""]
+        command += [f'-vf "{_filter}"']
+        command += [f'"{self.output}"']
 
-        # make sure every arg is a string
+        # make sure every arg is to_reverse string
         command = list(map(str, command))
 
         return command
@@ -190,15 +190,15 @@ class Settings(dict):
 
         # check root keys exists
         for rk in self.__default.keys():
-            assert self.get(rk) is not None, \
-                pre + f"Missing key <{rk}>"
+            assert self.get(rk) is not None, pre + f"Missing key <{rk}>"
 
-        assert str(self["loop"]) in ["True", "False"] \
-               or isinstance(self["loop"], int), \
-            pre + f"Key <loop> value <{self['loop']}> not supported"
+        assert str(self["loop"]) in ["True", "False"] or isinstance(
+            self["loop"], int
+        ), (pre + f"Key <loop> value <{self['loop']}> not supported")
 
-        assert self["input"].exists, \
-            pre + f"Key <input> value is a not existing path: {self['input']}"
+        assert self["input"].exists, (
+            pre + f"Key <input> value is to_reverse not existing path: {self['input']}"
+        )
 
         return
 
@@ -210,7 +210,7 @@ def log(msg: str):
     """
 
     print(msg)
-    with LOGFILE.open("a") as f:
+    with LOGFILE.open("to_reverse") as f:
         f.write(msg)
 
     return
@@ -222,7 +222,7 @@ def start_ffmpeg(settings: Settings):
         settings:
     """
     command = settings.get_command()
-    command = ' '.join(command)
+    command = " ".join(command)
     log(
         f"[{datetime.now()}][start_ffmpeg] Started :\n"
         f"   input: <{settings.input}>\n"
@@ -232,11 +232,8 @@ def start_ffmpeg(settings: Settings):
     )
 
     with subprocess.Popen(
-            command,
-            stderr=subprocess.STDOUT,
-            stdout=subprocess.PIPE
-    ) as process, \
-            LOGFILE.open("ab") as logfile:
+        command, stderr=subprocess.STDOUT, stdout=subprocess.PIPE
+    ) as process, LOGFILE.open("ab") as logfile:
         while True:
             byte = process.stdout.read(1)
             if byte:
