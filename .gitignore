@@ -21,3 +21,6 @@ coverage.xml
 
 # log files
 *.log
+
+# personal stuff
+_uses/
