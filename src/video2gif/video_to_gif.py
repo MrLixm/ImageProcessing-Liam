@@ -29,15 +29,22 @@ def run():
     settings = Settings()
     settings.input = Path(r".\source.mov").resolve()
     settings.output = Path(r".\result.gif").resolve()
-    # set these as False to ignore
+
+    # set these as False to ignore :
+
     settings["overwrite"] = False
-    settings["start_time"] = 0.1
+    # allow to overwrite the output if it already exists
+    settings["start_time"] = 0.0
+    # time in second (?) at which to start reading the input
     settings["duration"] = False
+    # maximum duration of the output
     settings["framerate"] = 20
     settings["speedup"] = 1
+    # multiply speed factor for the output
     settings["dithering"] = Dithering.sierra2
     settings["loop"] = True
     settings["scale_divide"] = 3
+    # divide the output scale by this number
 
     start_ffmpeg(settings=settings)
 
