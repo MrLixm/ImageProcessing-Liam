@@ -8,11 +8,8 @@ from pathlib import Path
 from pprint import pprint
 from typing import List
 
-from PIL import Image
 
-import imageGridCombine as iGC
-
-__all__ = ["get_specific_files_from_dir", "extract_crop_data", "combine_from_nuke"]
+__all__ = ["get_specific_files_from_dir", "extract_crop_data"]
 
 logger = logging.getLogger("iGC.utilities")
 
@@ -58,55 +55,6 @@ def extract_crop_data(filepath: Path):
 
     logger.debug(f"[extract_crop_data] {row},{column} found for {filepath}")
     return row, column
-
-
-def combine_from_nuke(
-    sources_list: List[Path],
-) -> Image.Image:
-    """
-
-    Args:
-        sources_list: list of file paths to combine
-
-    Returns:
-        combined image of all the images in sources_list
-    """
-
-    # Create a list of Image.Image and order it :
-    images_list: List[iGC.ImageGridPart] = iGC.core.images_list_to_imagegridparts(
-        images_list=sources_list, crop_data_function=extract_crop_data
-    )
-
-    grid_rows: List[int] = list(map(lambda igp: igp.row, images_list))
-    grid_cols: List[int] = list(map(lambda igp: igp.column, images_list))
-    grid_rows: int = max(grid_rows) + 1
-    grid_cols: int = max(grid_cols) + 1
-
-    images_list: List[Image.Image] = list(map(lambda igp: igp.image, images_list))
-
-    # Create the Image grid
-    img_grid = iGC.core.to_image_grid(images_list, grid_rows, grid_cols)
-
-    logger.info(f"[combine_from_nuke] Finished.")
-    return img_grid
-
-
-def write_jpg(img: Image.Image, export_path: Path, **kwargs) -> Path:
-    """
-
-    Args:
-        img: PIL image to export
-        export_path: full path to write the file. Also drive which format should the
-            spurce file must be encoded in.
-        kwargs: additional argument passed to the save() method.
-
-    Returns:
-        path of the exported file
-
-    """
-    img.save(fp=export_path, quality=95, subsampling=0, **kwargs)  # 4:4:4
-    logger.info(f"[write_jpg] Finish writing {export_path}.")
-    return export_path
 
 
 def __test():

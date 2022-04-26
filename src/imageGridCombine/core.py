@@ -3,13 +3,15 @@ python>3.6
 """
 import logging
 from pathlib import Path
-from typing import List, Callable, Tuple
+from typing import List, Callable, Tuple, TypeVar
 
 from PIL import Image
 
-__all__ = ["ImageGridPart", "to_image_grid", "images_list_to_imagegridparts"]
+__all__ = ["ImageGridPart", "ImageGrid", "to_image_grid", "paths_to_imagegridparts"]
 
-logger = logging.getLogger("iGC.imageGridCombine")
+logger = logging.getLogger("iGC.core")
+
+ImgType = TypeVar("ImgType")
 
 
 class ImageGridPart(tuple):
@@ -20,10 +22,10 @@ class ImageGridPart(tuple):
     left-corner (column=0, row=max(rox))
     """
 
-    def __new__(cls, column: int, row: int, img: Image.Image):
+    def __new__(cls, column: int, row: int, img: ImgType):
         return super(ImageGridPart, cls).__new__(cls, (column, row, img))
 
-    def __init__(self, column: int, row: int, img: Image.Image):
+    def __init__(self, column: int, row: int, img: ImgType):
         pass
 
     def __gt__(self, other) -> bool:
@@ -76,17 +78,80 @@ class ImageGridPart(tuple):
         return self.__getitem__(1)
 
     @property
-    def image(self) -> Image.Image:
+    def image(self) -> ImgType:
         return self.__getitem__(2)
 
 
-def images_list_to_imagegridparts(
-    images_list: List[Path], crop_data_function: Callable[[Path], Tuple[int, int]]
+class ImageGrid:
+    """
+    Describe a "grid" image which is multiple images append together in
+    a row/column format.
+    """
+
+    def __init__(self, parts: List[ImageGridPart]):
+
+        self.parts: List[ImageGridPart] = parts
+        self.image: Image.Image = None
+        self.grid_rows: int = 0
+        self.grid_cols: int = 0
+
+        self.build()
+        return
+
+    def build(self):
+
+        self.grid_rows: List[int] = list(map(lambda igp: igp.row, self.parts))
+        self.grid_cols: List[int] = list(map(lambda igp: igp.column, self.parts))
+        self.grid_rows: int = max(self.grid_rows) + 1
+        self.grid_cols: int = max(self.grid_cols) + 1
+
+        images_list: List[ImgType] = list(map(lambda igp: igp.image, self.parts))
+
+        self.image: Image.Image = to_image_grid(
+            imgs=images_list, rows=self.grid_rows, cols=self.grid_cols
+        )
+
+        return
+
+    def write_to(self, export_path: Path, **kwargs):
+        """
+
+        Args:
+            export_path:  full path to write the file. Also drive which format should
+                the grid image must be encoded in.
+            **kwargs: additional argument passed to the save() method.
+
+        """
+
+        if export_path.suffix == ".jpg":
+            self.image.save(fp=export_path, **kwargs)
+        else:
+            raise ValueError(
+                f"Unsuported extension {export_path.suffix} from {export_path}"
+            )
+
+        logger.info(
+            f"[{self.__class__.__name__}][write_to] Finish writing {export_path}."
+        )
+        return
+
+    @classmethod
+    def build_from_paths(
+        cls,
+        paths_list: List[Path],
+        crop_data_function: Callable[[Path], Tuple[int, int]],
+    ):
+        parts = paths_to_imagegridparts(paths_list, crop_data_function)
+        return ImageGrid(parts=parts)
+
+
+def paths_to_imagegridparts(
+    paths_list: List[Path], crop_data_function: Callable[[Path], Tuple[int, int]]
 ) -> List[ImageGridPart]:
     """
 
     Args:
-        images_list:
+        paths_list:
         crop_data_function: function that return (row, column) from a path.
 
     Returns:
@@ -95,7 +160,7 @@ def images_list_to_imagegridparts(
 
     out: List[ImageGridPart] = list()
 
-    for img_path in images_list:
+    for img_path in paths_list:
 
         # determine the number of row and column from the file name
         row, column = crop_data_function(img_path)
@@ -110,7 +175,7 @@ def images_list_to_imagegridparts(
     out.reverse()
 
     logger.info(
-        f"[images_list_to_imagegridparts] Finished converting {len(images_list)} images."
+        f"[paths_to_imagegridparts] Finished converting {len(paths_list)} images."
     )
     return out
 
