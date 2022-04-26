@@ -47,14 +47,14 @@ class TestImageGridPart(unittest.TestCase):
     def test_operators(self):
 
         self.assertTrue(self.imggc0x2 > self.imggc1x2)
-        self.assertTrue(self.imggc0x2 > self.imggc0x1)
-        self.assertTrue(self.imggc1x0 < self.imggc1x1)
-        self.assertFalse(self.imggc1x2 < self.imggc1x1)
+        self.assertTrue(self.imggc0x2 < self.imggc0x1)
+        self.assertTrue(self.imggc1x0 > self.imggc1x1)
+        self.assertFalse(self.imggc1x2 > self.imggc1x1)
         self.assertTrue(self.imggc0x0 <= self.imggc0x0)
         self.assertFalse(self.imggc0x0 <= self.imggc1x0)
-        self.assertFalse(self.imggc0x1 >= self.imggc1x2)
+        self.assertFalse(self.imggc0x1 <= self.imggc1x2)
         self.assertTrue(self.imggc1x1 >= self.imggc1x1)
-        self.assertTrue(self.imggc1x2 >= self.imggc1x0)
+        self.assertFalse(self.imggc1x2 >= self.imggc1x0)
 
         self.assertTrue(self.imggc1x1 == self.imggc1x1)
         self.assertFalse(self.imggc1x0 == self.imggc1x1)
@@ -115,6 +115,7 @@ class TestImageResult(unittest.TestCase):
             paths_list=self.sources_list,
             crop_data_function=iGC.utilities.extract_crop_data,
         )
+        imggrid.reverse_rows()
         imggrid.write_to(export_path=self.target_path, quality=95, subsampling=0)
 
         self.assertTrue(self.target_path.exists())
@@ -127,6 +128,7 @@ class TestImageResult(unittest.TestCase):
             paths_list=self.sources_list,
             crop_data_function=iGC.utilities.extract_crop_data,
         )
+        imggrid.reverse_rows()
         imggrid.write_to(export_path=self.target_path, quality=95, subsampling=0)
 
         self.assertTrue(self.target_path.exists())

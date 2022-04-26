@@ -16,10 +16,13 @@ ImgType = TypeVar("ImgType")
 
 class ImageGridPart(tuple):
     """
-    Convenient class to describe an image stored into multiple crops.
-    Each crop is represented by its column and row number.
-    Each crop importance use PIL.Image order, i.e. starting from the upper
-    left-corner (column=0, row=max(rox))
+    Convenient class to describe a part of an image stored into multiple crops.
+    Subclassing tuple to change its behavior.
+
+    Each crop is represented by its column and row number which both starts at 0.
+
+    Crop "order" use `PIL.Image` order, i.e. starting from the upper
+    left-corner (column=0, row=0) and going to the bottom-right corner.
     """
 
     def __new__(cls, column: int, row: int, img: ImgType):
@@ -33,7 +36,7 @@ class ImageGridPart(tuple):
         if self.row == other.row:
             return self.column < other.column
         else:
-            return self.row > other.row
+            return self.row < other.row
 
     def __lt__(self, other) -> bool:
         # <
@@ -86,6 +89,18 @@ class ImageGrid:
     """
     Describe a "grid" image which is multiple images append together in
     a row/column format.
+
+    Images are appended to the final composite from left to right and top to bottom
+    which mean starting from row0-column0, then row0-column1, ...
+    You can use `reverse_rows()` or `reverse_columns()` if your crops were using
+    the inverse order.
+
+    Attributes:
+        parts: list of ImagineGridParts to combine to a single image
+        image: combined image
+        grid_rows: number of rows in the grid (starts at 1)
+        grid_cols: number of columns in the grid (starts at 1)
+
     """
 
     def __init__(self, parts: List[ImageGridPart]):
@@ -110,7 +125,39 @@ class ImageGrid:
         self.image: Image.Image = to_image_grid(
             imgs=images_list, rows=self.grid_rows, cols=self.grid_cols
         )
+        logger.debug(f"[{self.__class__.__name__}][build] Finished")
+        return
 
+    def reverse_columns(self):
+        """
+        For all ImageGridPart, inverse the column index, so the last index become the first.
+        Exemple for a 4 column grid : 4->0, 3->1, ...
+        """
+        for i, igp in enumerate(self.parts):
+            ncol = self.grid_cols - 1 - igp.column
+            self.parts[i] = ImageGridPart(ncol, igp.row, igp.image)
+        logger.debug(
+            f"[{self.__class__.__name__}][reverse_columns] Finished. Calling build() ..."
+        )
+        self.parts.sort()
+        self.parts.reverse()
+        self.build()
+        return
+
+    def reverse_rows(self):
+        """
+        For all ImageGridPart, inverse the row index, so the last index become the first.
+        Exemple for a 3 row grid : 3->0, 2->1, 1->0
+        """
+        for i, igp in enumerate(self.parts):
+            nrow = self.grid_rows - 1 - igp.row
+            self.parts[i] = ImageGridPart(igp.column, nrow, igp.image)
+        logger.debug(
+            f"[{self.__class__.__name__}][reverse_rows] Finished. Calling build() ..."
+        )
+        self.parts.sort()
+        self.parts.reverse()
+        self.build()
         return
 
     def write_to(self, export_path: Path, **kwargs):
@@ -124,6 +171,7 @@ class ImageGrid:
         """
 
         if export_path.suffix == ".jpg":
+            self.image = self.image.convert(mode="RGB")
             self.image.save(fp=export_path, **kwargs)
         else:
             raise ValueError(
@@ -141,6 +189,15 @@ class ImageGrid:
         paths_list: List[Path],
         crop_data_function: Callable[[Path], Tuple[int, int]],
     ):
+        """
+
+        Args:
+            paths_list:
+            crop_data_function: function that return (row, column) from a path.
+
+        Returns:
+            given images path as a combined ImageGrid object.
+        """
         parts = paths_to_imagegridparts(paths_list, crop_data_function)
         return ImageGrid(parts=parts)
 
@@ -149,10 +206,13 @@ def paths_to_imagegridparts(
     paths_list: List[Path], crop_data_function: Callable[[Path], Tuple[int, int]]
 ) -> List[ImageGridPart]:
     """
+    Convert a filepath to an ImageGridPart instance. A callable must be passed that
+    will return which row and column the filepath correspond to.
 
     Args:
         paths_list:
         crop_data_function: function that return (row, column) from a path.
+            type hint:  Callable[[Path], Tuple[int, int]]
 
     Returns:
         given images path as PIL images with their associated row/column index.
@@ -182,8 +242,9 @@ def paths_to_imagegridparts(
 
 def to_image_grid(imgs: list[Image.Image], rows: int, cols: int) -> Image.Image:
     """
+    The real core function of all this module.
     Based on : https://stackoverflow.com/a/65583584/13806195
-    Alpha is ignored.
+
     Behavior hardocoded to PIL processing from top left corner to bottom right corner
 
     Args:
@@ -213,7 +274,7 @@ def to_image_grid(imgs: list[Image.Image], rows: int, cols: int) -> Image.Image:
     )
 
     # 2. Create the output image
-    img_grid = Image.new("RGB", size=(int(grid_width), int(grid_height)))
+    img_grid = Image.new("RGBA", size=(int(grid_width), int(grid_height)))
 
     topleftcorner_x = 0
     topleftcorner_y = 0
@@ -228,7 +289,7 @@ def to_image_grid(imgs: list[Image.Image], rows: int, cols: int) -> Image.Image:
 
         logger.debug(
             f"[to_image_grid] {i} img[{img.size[0]} x {img.size[1]}] :"
-            f" row[{row}] col[{col}] : xy({topleftcorner_x}, {topleftcorner_y})"
+            f" col[{col}] row[{row}] : xy({topleftcorner_x}, {topleftcorner_y})"
         )
         img_grid.paste(img, box=(int(topleftcorner_x), int(topleftcorner_y)))
 
