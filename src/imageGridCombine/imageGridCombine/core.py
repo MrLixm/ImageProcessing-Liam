@@ -254,7 +254,7 @@ def paths_to_imagegridparts(
     return out
 
 
-def to_image_grid(imgs: list[Image.Image], rows: int, cols: int) -> Image.Image:
+def to_image_grid(imgs: List[Image.Image], rows: int, cols: int) -> Image.Image:
     """
     The real core function of all this module.
     Based on : https://stackoverflow.com/a/65583584/13806195
