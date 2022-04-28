@@ -1,6 +1,6 @@
 """
 author=Liam Collod
-last_modified=26/04/2022
+last_modified=28/04/2022
 python>3.6
 
 [LICENSE]
@@ -17,7 +17,7 @@ limitations under the License.
 """
 import logging
 from pathlib import Path
-from typing import List, Callable, Tuple, TypeVar
+from typing import List, Callable, Tuple, TypeVar, Optional
 
 from PIL import Image
 
@@ -141,6 +141,14 @@ class ImageGrid:
         )
         logger.debug(f"[{self.__class__.__name__}][build] Finished")
         return
+
+    def get_part(self, row: int, column: int) -> Optional[ImageGridPart]:
+
+        for igp in self.parts:
+            if igp.row == row and igp.column == column:
+                return igp
+
+        return None
 
     def reverse_columns(self):
         """
