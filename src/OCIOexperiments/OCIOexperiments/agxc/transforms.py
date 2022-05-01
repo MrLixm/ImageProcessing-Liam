@@ -63,7 +63,7 @@ def output_srgb_punchy_proc() -> ocio.CPUProcessor:
 @cache
 def get_agx_lut() -> colour.LUT1D:
 
-    lut_path = CONFIG.parent / "LUTs" / "AgX_Default_Contrast.spi1d"
+    lut_path = c.CONFIG_PATH.parent / "LUTs" / "AgX_Default_Contrast.spi1d"
 
     lut = colour.io.read_LUT_SonySPI1D(str(lut_path))
     return lut
@@ -76,23 +76,23 @@ def look_punchy(
 ) -> numpy.ndarray:
 
     # gamma
-    array = numpy.power(array, punchy_gamma)
+    array = array**punchy_gamma
     # saturation based on CDL formula
     # see https://video.stackexchange.com/q/9866
-    luma = numpy.multiply(array, 0.2)
+    luma = array * 0.2
     luma = numpy.sum(luma, axis=2)
     luma = numpy.stack((luma,) * 3, axis=-1)
-    array = numpy.subtract(array, luma)
-    array = numpy.multiply(array, punchy_saturation)
-    array = numpy.add(luma, array)
+    array -= luma
+    array *= punchy_saturation
+    array += luma
 
     return array
 
 
 def look1(array: numpy.ndarray) -> numpy.ndarray:
 
-    array = numpy.multiply(array, 15)  # gain 15
-    array = numpy.power(array, 1 / 1.15)  # gamma 1.15
+    array *= 15  # gain 15
+    array = array**1 / 1.15  # gamma 1.15
     return array
 
 
@@ -109,8 +109,8 @@ def transform_inout_look_1(array: numpy.ndarray) -> numpy.ndarray:
 
     """
 
-    # apply linearisation
-    input_srgb_proc().applyRGB(array)
+    # 1. apply inverse EOTF to linearize
+    array: numpy.ndarray = array**2.2
 
     # grading
     array = look1(array=array)
