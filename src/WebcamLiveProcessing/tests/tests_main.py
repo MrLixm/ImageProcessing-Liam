@@ -51,13 +51,13 @@ def run():
         name="c922pro",
         target_width=1280,
         target_height=720,
-        target_fps=24,
+        target_fps=30,
     )
     cam_c922 = wlp.sources.Webcam(configuration=config)
 
     # start process
     # wlp.main.run3(camera=cam_c922)
-    wlp.main.run4live(camera=cam_c922)
+    wlp.main.run4live(camera=cam_c922, method="ocio", debug=True)
 
     logger.info("//// Finished.")
     return

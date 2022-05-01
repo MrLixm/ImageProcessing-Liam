@@ -87,7 +87,7 @@ class Webcam(cv2.VideoCapture):
 
         logger.info(
             f"[{self.__class__.__name__}][__init__] Started, "
-            f"this can take a few seconds ..."
+            f"this can take half a minute ..."
         )
 
         super().__init__(configuration.camera)

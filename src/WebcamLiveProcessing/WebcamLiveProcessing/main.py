@@ -3,10 +3,7 @@ This scripts uses OpenCV to capture webcam output, applies a filter,
 and sends it to the virtual camera.
 It also shows how to use BGR as pixel format.
 """
-
-import argparse
 import logging
-import sys
 import time
 from pathlib import Path
 from typing import Literal, List, Union
@@ -142,18 +139,27 @@ def run3(camera: sources.Webcam, duration: int = 3):
     return
 
 
-def run4live(camera: sources.Webcam):
+def run4live(camera: sources.Webcam, method: Literal["ocio", "native"], debug=False):
     """
+    VirtualCamera stream with AgX
+
     Args:
+        method:
         camera:
+        debug: if true display per-frame info like fps
     """
+
+    if method == "ocio":
+        colortransform = ocex.agxc.transforms.transform_inout_look_1
+    elif method == "native":
+        colortransform = ocex.agxc.transforms.transform_native_inout_look_1
 
     with pyvirtualcam.Camera(
         width=camera.width,
         height=camera.height,
         fps=camera.fps,
         fmt=PixelFormat.RGB,
-        print_fps=False,
+        print_fps=debug,
     ) as vcam:
 
         logger.info(
@@ -169,7 +175,7 @@ def run4live(camera: sources.Webcam):
             new_image = cv2.cvtColor(current_image, cv2.COLOR_BGR2RGB)
             new_image = new_image.astype(numpy.float32)
             new_image /= 255
-            new_image = ocex.basic.transform_array_1(new_image)
+            new_image = colortransform(new_image)
             new_image *= 255
             new_image = new_image.astype(numpy.uint8)
 
