@@ -12,6 +12,7 @@ pyvirtualcam = "0.9.1"
 opencv-python = "4.5.5.*"
 opencolorio = "2.1.1"
 openimageio = { path = "./vendor/OpenImageIO-2.2.18.0-cp39-cp39-win_amd64.whl" }
+colour-science = "0.4.1"
 
 [tool.poetry.dev-dependencies]
 black = "*"
