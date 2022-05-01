@@ -1,6 +1,7 @@
 """
 """
 import logging
+import sys
 import time
 from pathlib import Path
 from typing import Literal, List, Union
@@ -16,12 +17,45 @@ import OCIOexperiments as ocex
 logger = logging.getLogger(f"{wlp.c.ABR}.tests_misc")
 
 
-def run1live(camera: wlp.Webcam):
+def setup_logging(level, loggers: List[str]):
+
+    handler = logging.StreamHandler(stream=sys.stdout)
+    handler.setLevel(logging.DEBUG)
+    # create a logging format
+    formatter = logging.Formatter(
+        "%(asctime)s - [%(levelname)7s] %(name)30s // %(message)s",
+        datefmt="%H:%M:%S",
+    )
+    handler.setFormatter(formatter)
+
+    for logger_name in loggers:
+
+        logger = logging.getLogger(logger_name)
+        logger.setLevel(level)
+
+        # add the file handler to the logger
+        if not logger.handlers:
+            logger.addHandler(handler)
+
+    return
+
+
+setup_logging(logging.DEBUG, loggers=[wlp.c.ABR, ocex.c.ABR])
+
+
+"""
+---------------------------------------------------------------------------------------
+"""
+
+
+def live_exposure(camera: wlp.Webcam, exposure: float = 1, debug: bool = False):
     """
     Basic example from
     https://github.com/letmaik/pyvirtualcam/blob/main/examples/webcam_filter.py
 
     Args:
+        debug:
+        exposure:
         camera:
 
     """
@@ -31,12 +65,12 @@ def run1live(camera: wlp.Webcam):
         height=camera.height,
         fps=camera.fps,
         fmt=PixelFormat.RGB,
-        print_fps=False,
+        print_fps=debug,
     ) as vcam:
 
         logger.info(
-            f"[run1] pyvirtualcam started: {vcam.device} ({vcam.width}x{vcam.height})"
-            f"@{vcam.fps}fps)"
+            f"[live_exposure] pyvirtualcam started: {vcam.device} "
+            f"({vcam.width}x{vcam.height})@{vcam.fps}fps)"
         )
 
         while True:
@@ -45,16 +79,24 @@ def run1live(camera: wlp.Webcam):
             if not ret:
                 raise RuntimeError("Error fetching frame")
 
-            vcam.send(frame)
+            new_image: numpy.ndarray = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            new_image = new_image.astype(numpy.float32)
+            new_image /= 255
+            new_image = new_image * exposure
+            new_image = new_image.clip(0, 1)
+            new_image *= 255
+            new_image = new_image.astype(numpy.uint8)
+
+            vcam.send(new_image)
 
             # Wait until it's time for the next frame.
             vcam.sleep_until_next_frame()
 
-    logger.info("[run1] Finished.")
+    logger.info("[live_exposure] Finished.")
     return
 
 
-def run2(camera: wlp.Webcam):
+def sream2image1(camera: wlp.Webcam):
 
     export_path = wlp.c.OUTPUT_DIR / "0002" / "webcam.$FRAME.tif"
 
@@ -93,7 +135,7 @@ def run2(camera: wlp.Webcam):
     return
 
 
-def run3(camera: wlp.Webcam, duration: int = 3):
+def sream2image2(camera: wlp.Webcam, duration: int = 3):
     """
     Run the webcam during the given time and apply an OCIO processingon each frame that
     are then written to disk.
@@ -133,3 +175,28 @@ def run3(camera: wlp.Webcam, duration: int = 3):
 
     logger.info("[run3] Finished.")
     return
+
+
+def run():
+
+    logger.info("//// Started.")
+
+    config = wlp.sources.WebcamConfiguration(
+        camera=0,
+        name="c922pro",
+        target_width=1280,
+        target_height=720,
+        target_fps=30,
+    )
+    cam_c922 = wlp.sources.Webcam(configuration=config)
+
+    # start process
+    live_exposure(camera=cam_c922, exposure=2, debug=True)
+
+    logger.info("//// Finished.")
+    return
+
+
+if __name__ == "__main__":
+
+    run()
