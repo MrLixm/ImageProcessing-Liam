@@ -1,3 +1,4 @@
 from . import c
-from . import main
 from . import sources
+
+from .sources import Webcam, WebcamConfiguration
