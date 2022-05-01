@@ -18,11 +18,15 @@ __all__ = ["run1", "transform_array_1"]
 logger = logging.getLogger(f"{c.ABR}.basic")
 
 
-CONFIG_PATH = Path(r"F:\softwares\color\library\agx\AgXc\v0.1.4\config\config.ocio")
+CONFIG_PATH = c.DATA_DIR / "configs" / "AgXc-v0.1.4" / "config.ocio"
 
 
 @cache
 def get_procs1() -> List[ocio.CPUProcessor]:
+    """
+    AgXc config
+    Get processor for basic sRGB display imagery formation with the AgX config.
+    """
 
     ocioconfig: ocio.Config = ocio.Config().CreateFromFile(str(CONFIG_PATH))
 
