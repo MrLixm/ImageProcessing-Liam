@@ -41,7 +41,7 @@ unicode_backport = ["unicodedata2"]
 
 [[package]]
 name = "click"
-version = "8.1.2"
+version = "8.1.3"
 description = "Composable command line interface toolkit"
 category = "dev"
 optional = false
@@ -68,7 +68,7 @@ python-versions = "*"
 
 [[package]]
 name = "flask"
-version = "2.1.1"
+version = "2.1.2"
 description = "A simple framework for building complex web applications."
 category = "dev"
 optional = false
@@ -139,7 +139,7 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "jinja2"
-version = "3.1.1"
+version = "3.1.2"
 description = "A very fast and expressive template engine."
 category = "dev"
 optional = false
@@ -190,6 +190,42 @@ optional = false
 python-versions = ">=3.8"
 
 [[package]]
+name = "opencolorio"
+version = "2.1.1"
+description = "OpenColorIO (OCIO) is a complete color management solution geared towards motion picture production with an emphasis on visual effects and computer animation."
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
+name = "opencv-python"
+version = "4.5.5.64"
+description = "Wrapper package for OpenCV python bindings."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+numpy = [
+    {version = ">=1.21.2", markers = "python_version >= \"3.6\" and platform_system == \"Darwin\" and platform_machine == \"arm64\""},
+    {version = ">=1.19.3", markers = "python_version >= \"3.6\" and platform_system == \"Linux\" and platform_machine == \"aarch64\" or python_version >= \"3.9\""},
+    {version = ">=1.14.5", markers = "python_version >= \"3.7\""},
+    {version = ">=1.17.3", markers = "python_version >= \"3.8\""},
+]
+
+[[package]]
+name = "OpenImageIO"
+version = "2.2.18.0"
+description = "A library for reading and writing images."
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.source]
+type = "file"
+url = "vendor/OpenImageIO-2.2.18.0-cp39-cp39-win_amd64.whl"
+
+[[package]]
 name = "path-and-address"
 version = "2.0.1"
 description = "Functions for server command-line arguments used by humans."
@@ -236,6 +272,17 @@ description = "Pygments is a syntax highlighting package written in Python."
 category = "dev"
 optional = false
 python-versions = ">=3.6"
+
+[[package]]
+name = "pyvirtualcam"
+version = "0.9.1"
+description = "Send frames to a virtual camera"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+numpy = "*"
 
 [[package]]
 name = "requests"
@@ -286,7 +333,7 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 
 [[package]]
 name = "werkzeug"
-version = "2.1.1"
+version = "2.1.2"
 description = "The comprehensive WSGI web application library."
 category = "dev"
 optional = false
@@ -310,7 +357,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = "3.9.*"
-content-hash = "02f70ebebbdf1d2fbd45d4716409e2314a2b097034233c637f6537ba3bed2f7d"
+content-hash = "446df38678a65243b0d9aa304af0881b3584b270e5ef89dea69fbdde5f3ef667"
 
 [metadata.files]
 black = [
@@ -347,8 +394,8 @@ charset-normalizer = [
     {file = "charset_normalizer-2.0.12-py3-none-any.whl", hash = "sha256:6881edbebdb17b39b4eaaa821b438bf6eddffb4468cf344f09f89def34a8b1df"},
 ]
 click = [
-    {file = "click-8.1.2-py3-none-any.whl", hash = "sha256:24e1a4a9ec5bf6299411369b208c1df2188d9eb8d916302fe6bf03faed227f1e"},
-    {file = "click-8.1.2.tar.gz", hash = "sha256:479707fe14d9ec9a0757618b7a100a0ae4c4e236fac5b7f80ca68028141a1a72"},
+    {file = "click-8.1.3-py3-none-any.whl", hash = "sha256:bb4d8133cb15a609f44e8213d9b391b0809795062913b383c62be0ee95b1db48"},
+    {file = "click-8.1.3.tar.gz", hash = "sha256:7682dc8afb30297001674575ea00d1814d808d6a36af415a82bd481d37ba7b8e"},
 ]
 colorama = [
     {file = "colorama-0.4.4-py2.py3-none-any.whl", hash = "sha256:9f47eda37229f68eee03b24b9748937c7dc3868f906e8ba69fbcbdd3bc5dc3e2"},
@@ -358,8 +405,8 @@ docopt = [
     {file = "docopt-0.6.2.tar.gz", hash = "sha256:49b3a825280bd66b3aa83585ef59c4a8c82f2c8a522dbe754a8bc8d08c85c491"},
 ]
 flask = [
-    {file = "Flask-2.1.1-py3-none-any.whl", hash = "sha256:8a4cf32d904cf5621db9f0c9fbcd7efabf3003f22a04e4d0ce790c7137ec5264"},
-    {file = "Flask-2.1.1.tar.gz", hash = "sha256:a8c9bd3e558ec99646d177a9739c41df1ded0629480b4c8d2975412f3c9519c8"},
+    {file = "Flask-2.1.2-py3-none-any.whl", hash = "sha256:fad5b446feb0d6db6aec0c3184d16a8c1f6c3e464b511649c8918a9be100b4fe"},
+    {file = "Flask-2.1.2.tar.gz", hash = "sha256:315ded2ddf8a6281567edb27393010fe3406188bafbfe65a3339d5787d89e477"},
 ]
 grip = [
     {file = "grip-4.6.1-py3-none-any.whl", hash = "sha256:3feed5c3eff92a02e56bba5f7c6d8b8007752b260b5c9c6946e045c2812d9b69"},
@@ -378,8 +425,8 @@ itsdangerous = [
     {file = "itsdangerous-2.1.2.tar.gz", hash = "sha256:5dbbc68b317e5e42f327f9021763545dc3fc3bfe22e6deb96aaf1fc38874156a"},
 ]
 jinja2 = [
-    {file = "Jinja2-3.1.1-py3-none-any.whl", hash = "sha256:539835f51a74a69f41b848a9645dbdc35b4f20a3b601e2d9a7e22947b15ff119"},
-    {file = "Jinja2-3.1.1.tar.gz", hash = "sha256:640bed4bb501cbd17194b3cace1dc2126f5b619cf068a726b98192a0fde74ae9"},
+    {file = "Jinja2-3.1.2-py3-none-any.whl", hash = "sha256:6088930bfe239f0e6710546ab9c19c9ef35e29792895fed6e6e31a023a182a61"},
+    {file = "Jinja2-3.1.2.tar.gz", hash = "sha256:31351a702a408a9e7595a8fc6150fc3f43bb6bf7e319770cbc0db9df9437e852"},
 ]
 markdown = [
     {file = "Markdown-3.3.6-py3-none-any.whl", hash = "sha256:9923332318f843411e9932237530df53162e29dc7a4e2b91e35764583c46c9a3"},
@@ -453,6 +500,50 @@ numpy = [
     {file = "numpy-1.22.3-pp38-pypy38_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c34ea7e9d13a70bf2ab64a2532fe149a9aced424cd05a2c4ba662fd989e3e45f"},
     {file = "numpy-1.22.3.zip", hash = "sha256:dbc7601a3b7472d559dc7b933b18b4b66f9aa7452c120e87dfb33d02008c8a18"},
 ]
+opencolorio = [
+    {file = "opencolorio-2.1.1-cp310-cp310-macosx_10_13_x86_64.whl", hash = "sha256:514c34a6a7579969a9875398676bb4bb2cef69dcbd72af18a362f01876f771a6"},
+    {file = "opencolorio-2.1.1-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:852d5621587af14da714b582216d3cdd8ace5dc8c60bc3f20a66027749b782e6"},
+    {file = "opencolorio-2.1.1-cp310-cp310-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:a08e89c370302384d18a5b33202fe46bb16cf1419c1f96a01f6dea4b94f2f8d3"},
+    {file = "opencolorio-2.1.1-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:287fc92d2c2db18c374717fdc2efa84806e6d87709869128d8cb622b069999ec"},
+    {file = "opencolorio-2.1.1-cp310-cp310-win32.whl", hash = "sha256:0b5c4cbf2f158a9adbb9245fc0a63c474a644b89eda789cccf31ad42a2ba3807"},
+    {file = "opencolorio-2.1.1-cp310-cp310-win_amd64.whl", hash = "sha256:a4cc07716b2755257062a03cf6582948b8392520e70f0bd913044caa03277fda"},
+    {file = "opencolorio-2.1.1-cp36-cp36m-macosx_10_13_x86_64.whl", hash = "sha256:a9d96b2ae2d409baedd6afb002f08457c27fbc0c96d062b29eaedc03e84ea499"},
+    {file = "opencolorio-2.1.1-cp36-cp36m-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:693c8e7bcda8f34c71a6c638d34a25d5b2ab8845b4191b19295235e80a7fb430"},
+    {file = "opencolorio-2.1.1-cp36-cp36m-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:b6a5a5b406ea2c3a844a115acdd7a2a719106e7676e1cb44b09bc286c379297c"},
+    {file = "opencolorio-2.1.1-cp36-cp36m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0afc18e655b58d152c2edde88eecf4095ab854039870f7f6de02e429c4f14661"},
+    {file = "opencolorio-2.1.1-cp36-cp36m-win32.whl", hash = "sha256:0f853a90f5b2c58128bb12c1349677f00ee44e766879752a43f3ef43b6131231"},
+    {file = "opencolorio-2.1.1-cp36-cp36m-win_amd64.whl", hash = "sha256:910ec7d29c5e04dd63e15f4f7d4da1f0073e91e605a27e8473a751ea1d6e3f8f"},
+    {file = "opencolorio-2.1.1-cp37-cp37m-macosx_10_13_x86_64.whl", hash = "sha256:38e9693e0072f00bbd5b78adf6df502c270de5e34f19eeae5ca0e1af6c7eeb52"},
+    {file = "opencolorio-2.1.1-cp37-cp37m-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:7352249a468686eddf40587e32e6a5e3939d23378c8ba5761d51fef2ced05708"},
+    {file = "opencolorio-2.1.1-cp37-cp37m-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:9a2cf91618802e6535b857e0abfe1b54c78e45fef16d4d903a25df089c66ffb3"},
+    {file = "opencolorio-2.1.1-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:01dc21562f1f08e255e60a29f7bde8527c28b742e9bd4294666fcd22de4d3614"},
+    {file = "opencolorio-2.1.1-cp37-cp37m-win32.whl", hash = "sha256:50203eb56eb4f2cf9b7b68834497cfc055175dd547694429ef86c25bc9c4a5e8"},
+    {file = "opencolorio-2.1.1-cp37-cp37m-win_amd64.whl", hash = "sha256:75561525384a7a1342568a37c2b03e34b74e1ae68cdaa4adced9175efc9c5791"},
+    {file = "opencolorio-2.1.1-cp38-cp38-macosx_10_13_x86_64.whl", hash = "sha256:e41f43665aebf757cacab48f08cc0de33f6e7b799d8051e5688ebc513df9c5c5"},
+    {file = "opencolorio-2.1.1-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:46ba70fd3dd8ad6d722e578ea8353707693d91621a252dbc78abc9a500f0ae92"},
+    {file = "opencolorio-2.1.1-cp38-cp38-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:86700a6f167ea769438a69ec4f132fda8a193e35b7aac877ff13d9f88693efa7"},
+    {file = "opencolorio-2.1.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:3f22d3dbf2fc7dd13facf4e0a1e420d884b9a1317791bd981ce4398134c56f21"},
+    {file = "opencolorio-2.1.1-cp38-cp38-win32.whl", hash = "sha256:ef6cb4646db7d8e6c4ec1881bf11a2a764f7176f3132be0942632861f96e0186"},
+    {file = "opencolorio-2.1.1-cp38-cp38-win_amd64.whl", hash = "sha256:5ca3c33cfcaf2d4f91bbc581c5e03dc1de51598d0e821c691ca0c949444b67a3"},
+    {file = "opencolorio-2.1.1-cp39-cp39-macosx_10_13_x86_64.whl", hash = "sha256:292723c5f6fee56a266cdf2f001f96caa89ec66224dc2a91b6a00c650a45effd"},
+    {file = "opencolorio-2.1.1-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:88f62b90b703713b460069a1e3ffe75e6d99eb1cb61b9c4f808f3bc2aa4a9db3"},
+    {file = "opencolorio-2.1.1-cp39-cp39-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:b8033c69b3771a03f7210a44d72426593f377bd9d3d001ff2c315a16a9f481a5"},
+    {file = "opencolorio-2.1.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1394026d6808ef0c758fafe791bf69e2147f67809507f4cc10d618f48ffd82d4"},
+    {file = "opencolorio-2.1.1-cp39-cp39-win32.whl", hash = "sha256:a65d879a617d146e02cadbdc9c7c302f02197d21a6f21dcddf057f8a9b879fc2"},
+    {file = "opencolorio-2.1.1-cp39-cp39-win_amd64.whl", hash = "sha256:30a44d7ff7f8671bd5d8ff2e7f271ae56e810ca5be2a6730d4c3d7be0f1874b0"},
+]
+opencv-python = [
+    {file = "opencv-python-4.5.5.64.tar.gz", hash = "sha256:f65de0446a330c3b773cd04ba10345d8ce1b15dcac3f49770204e37602d0b3f7"},
+    {file = "opencv_python-4.5.5.64-cp36-abi3-macosx_10_15_x86_64.whl", hash = "sha256:a512a0c59b6fec0fac3844b2f47d6ecb1a9d18d235e6c5491ce8dbbe0663eae8"},
+    {file = "opencv_python-4.5.5.64-cp36-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ca6138b6903910e384067d001763d40f97656875487381aed32993b076f44375"},
+    {file = "opencv_python-4.5.5.64-cp36-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b293ced62f4360d9f11cf72ae7e9df95320ff7bf5b834d87546f844e838c0c35"},
+    {file = "opencv_python-4.5.5.64-cp36-abi3-win32.whl", hash = "sha256:6247e584813c00c3b9ed69a795da40d2c153dc923d0182e957e1c2f00a554ac2"},
+    {file = "opencv_python-4.5.5.64-cp36-abi3-win_amd64.whl", hash = "sha256:408d5332550287aa797fd06bef47b2dfed163c6787668cc82ef9123a9484b56a"},
+    {file = "opencv_python-4.5.5.64-cp37-abi3-macosx_11_0_arm64.whl", hash = "sha256:7787bb017ae93d5f9bb1b817ac8e13e45dd193743cb648498fcab21d00cf20a3"},
+]
+OpenImageIO = [
+    {file = "OpenImageIO-2.2.18.0-cp39-cp39-win_amd64.whl", hash = "sha256:0696a3d70d8b4aa0e345500b135a186d132eb721d93a0db6ab56be4b4ff0e94d"},
+]
 path-and-address = [
     {file = "path-and-address-2.0.1.zip", hash = "sha256:e96363d982b3a2de8531f4cd5f086b51d0248b58527227d43cf5014d045371b7"},
 ]
@@ -508,6 +599,20 @@ pygments = [
     {file = "Pygments-2.12.0-py3-none-any.whl", hash = "sha256:dc9c10fb40944260f6ed4c688ece0cd2048414940f1cea51b8b226318411c519"},
     {file = "Pygments-2.12.0.tar.gz", hash = "sha256:5eb116118f9612ff1ee89ac96437bb6b49e8f04d8a13b514ba26f620208e26eb"},
 ]
+pyvirtualcam = [
+    {file = "pyvirtualcam-0.9.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:51239623a6874d3c3cc5f170788c948ab41e6f4e254bb9dc3ab0fed60ba84584"},
+    {file = "pyvirtualcam-0.9.1-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:eab7ce52105973e02725d278f12a12360d2b335165609dcb7d55a70ce19802a0"},
+    {file = "pyvirtualcam-0.9.1-cp310-cp310-win_amd64.whl", hash = "sha256:08fd19714ff35200c1b609c03d3cfec26e09fbf3ec259b19dcc1b0b2e8084357"},
+    {file = "pyvirtualcam-0.9.1-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:000047eaedf46eed01ebd8dfdf772d99bb9a6b6a0e256b8ba725cfe43b086341"},
+    {file = "pyvirtualcam-0.9.1-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:bdb366187e317d08f0ca73c0a30ede76db3c90f421da95af7e7be76b404df255"},
+    {file = "pyvirtualcam-0.9.1-cp37-cp37m-win_amd64.whl", hash = "sha256:206a9b10435f6e2ebc7ee0856b88fd67f1a9d3fd97463c698f57fd282e584785"},
+    {file = "pyvirtualcam-0.9.1-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:196a021b9afd15de7b2c9eed6f1444d123897d3f014af567ee561c27caaadbf8"},
+    {file = "pyvirtualcam-0.9.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:2fd524e7139581151480f6ba8688e615148ac471f0716dbf3337042e4b6a0669"},
+    {file = "pyvirtualcam-0.9.1-cp38-cp38-win_amd64.whl", hash = "sha256:c47cb64f810255134cbdd16134df162fea2cfabcdafd53131d438932b70a0f24"},
+    {file = "pyvirtualcam-0.9.1-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:a5a6088f15b6080438794b59ba21e6be949061b5848de504f91ccf444716c486"},
+    {file = "pyvirtualcam-0.9.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:035f7881629cb673d3e9167c2b801bb125e38673b711e0b4d2f6106f854d8ccd"},
+    {file = "pyvirtualcam-0.9.1-cp39-cp39-win_amd64.whl", hash = "sha256:c01d83700cd074c9195f79d8664e86c3afa8cd4895d163d2021215bcfcf3d2a2"},
+]
 requests = [
     {file = "requests-2.27.1-py2.py3-none-any.whl", hash = "sha256:f22fa1e554c9ddfd16e6e41ac79759e17be9e492b3587efa038054674760e72d"},
     {file = "requests-2.27.1.tar.gz", hash = "sha256:68d7c56fd5a8999887728ef304a6d12edc7be74f1cfa47714fc8b414525c9a61"},
@@ -525,8 +630,8 @@ urllib3 = [
     {file = "urllib3-1.26.9.tar.gz", hash = "sha256:aabaf16477806a5e1dd19aa41f8c2b7950dd3c746362d7e3223dbe6de6ac448e"},
 ]
 werkzeug = [
-    {file = "Werkzeug-2.1.1-py3-none-any.whl", hash = "sha256:3c5493ece8268fecdcdc9c0b112211acd006354723b280d643ec732b6d4063d6"},
-    {file = "Werkzeug-2.1.1.tar.gz", hash = "sha256:f8e89a20aeabbe8a893c24a461d3ee5dad2123b05cc6abd73ceed01d39c3ae74"},
+    {file = "Werkzeug-2.1.2-py3-none-any.whl", hash = "sha256:72a4b735692dd3135217911cbeaa1be5fa3f62bffb8745c5215420a03dc55255"},
+    {file = "Werkzeug-2.1.2.tar.gz", hash = "sha256:1ce08e8093ed67d638d63879fd1ba3735817f7a80de3674d293f5984f25fb6e6"},
 ]
 zipp = [
     {file = "zipp-3.8.0-py3-none-any.whl", hash = "sha256:c4f6e5bbf48e74f7a38e7cc5b0480ff42b0ae5178957d564d18932525d5cf099"},
