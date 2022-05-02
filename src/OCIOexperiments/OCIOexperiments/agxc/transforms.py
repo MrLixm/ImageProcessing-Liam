@@ -140,7 +140,10 @@ def transform_native_inout_look_1(array: numpy.ndarray) -> numpy.ndarray:
     # 2. Apply Grading
     array = look1(array)
 
-    # 3. Apply AgX Log encoding
+    # 3. Apply Punchy Look
+    array = look_punchy(array=array)
+
+    # 4. Apply AgX Log encoding
     array = array.clip(min=0)
     array = colour.algebra.vector_dot(
         agx_compressed_matrix,
@@ -152,11 +155,8 @@ def transform_native_inout_look_1(array: numpy.ndarray) -> numpy.ndarray:
         maximum_ev=6.5,
     )
     logarray = logarray.clip(0.0, 1.0)
-    # 4. Apply AgX Base
+    # 5. Apply AgX Base
     array = get_agx_lut().apply(logarray)
-
-    # 5. Apply Punchy Look
-    array = look_punchy(array=array)
 
     # EOTF is already applied
     return array
