@@ -48,12 +48,19 @@ setup_logging(logging.DEBUG, loggers=[wlp.c.ABR, ocex.c.ABR])
 """
 
 
-def live_exposure(camera: wlp.Webcam, exposure: float = 1, debug: bool = False):
+def live_exposure(
+    camera: wlp.Webcam,
+    exposure: float = 1,
+    exposure_mode: Literal["scene", "display"] = "scene",
+    debug: bool = False,
+):
     """
     Basic example from
     https://github.com/letmaik/pyvirtualcam/blob/main/examples/webcam_filter.py
 
     Args:
+        exposure_mode: apply exposure on scene or display referred data.
+            display referred is much faster.
         debug:
         exposure:
         camera:
@@ -80,10 +87,19 @@ def live_exposure(camera: wlp.Webcam, exposure: float = 1, debug: bool = False):
                 raise RuntimeError("Error fetching frame")
 
             new_image: numpy.ndarray = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            # convert to float
             new_image = new_image.astype(numpy.float32)
             new_image /= 255
+            # linearize
+            if exposure_mode == "scene":
+                new_image = new_image**2.2
+            # apply gain
             new_image = new_image * exposure
             new_image = new_image.clip(0, 1)
+            # apply back EOTF
+            if exposure_mode == "scene":
+                new_image = new_image ** (1 / 2.2)
+            # convert back to 8bit
             new_image *= 255
             new_image = new_image.astype(numpy.uint8)
 
