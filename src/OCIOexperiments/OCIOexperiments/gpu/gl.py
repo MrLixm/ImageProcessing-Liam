@@ -110,6 +110,7 @@ class Plane:
         return plane
 
 
+# noinspection PyPep8Naming
 class GLImage:
     """
     Perform OCIO processing on the GPU for an RGB(A) image.
@@ -120,25 +121,29 @@ class GLImage:
     def __init__(self):
 
         self.ocioops: ocioUtils.OcioOperationGraph = None
+        """
+        OCIO operations to apply on the image. Modified in live by the user.
+        """
 
-        self.img_src: main.ImageContainer = None
+        self.image: main.ImageContainer = None
         """
         Whole 32bit float Image.
         """
-        self.__tex_main: str = None
+        self._tex_main: str = None
         """
         texture name/identifier
         """
 
-        self.__plane: Plane = None
+        self._textures_ids = list()
+        self._uniforms_ids = dict()
+        self._texture_index_buf = 1
         """
-        the image plane for viewing the texture
+        Buffer for number of texture created in a run.
         """
 
-        self.transform_interactive: main.InteractiveLook = main.InteractiveLook()
+        self._plane: Plane = None
         """
-        Common color transformations values that can be modified interactively
-        by the user. 
+        the image plane for viewing the texture
         """
 
         # OpenGL shaders
@@ -161,20 +166,69 @@ class GLImage:
         Has the instance been initialized a first time.
         """
         # tex_main is no more None once <initialize> is called.
-        return True if self.__tex_main else False
+        return True if self._tex_main else False
 
-    def initialize(self):
+    def initializeGL(self):
         """
         Get called once.
+        Requires shader_desc to be intialized.
         """
         assert not self._initialized, "This instance has already been initalized !"
 
-        self.__tex_main = glUtils.create_texture2d(
-            self.img_src.width, self.img_src.height
-        )
-        self.__plane = Plane.create()
+        self._tex_main = glUtils.create_texture2d(self.image.width, self.image.height)
+        self._plane = Plane.create()
 
-        logger.debug(f"[{self.__class__.__name__}][initialize] Finished.")
+        self.build_program()
+
+        logger.debug(f"[{self.__class__.__name__}][initializeGL] Finished.")
+        return
+
+    def paintGL(self):
+        """
+        Called whenever a repaint is needed. Calling ``update()`` will
+        schedule a repaint.
+        """
+        GL.glClearColor(0.0, 0.0, 0.0, 1.0)
+        GL.glClear(GL.GL_COLOR_BUFFER_BIT)
+
+        if self.shader_program is None:
+            logger.debug(
+                f"[{self.__class__.__name__}][paintGL] Returned early. "
+                f"No shader program yet."
+            )
+            return
+
+        GL.glUseProgram(self.shader_program)
+
+        self.use_textures_ocio()
+        self.use_uniforms_ocio()
+
+        # Set uniforms TODO check what to do
+        # mvp_mat = self._proj_mat * self._model_view_mat
+        # mvp_mat_loc = GL.glGetUniformLocation(self.shader_program, "mvpMat")
+        # GL.glUniformMatrix4fv(
+        #     mvp_mat_loc, 1, GL.GL_FALSE, self._m44f_to_ndarray(mvp_mat)
+        # )
+
+        image_tex_loc = GL.glGetUniformLocation(self.shader_program, "imageTex")
+        GL.glUniform1i(image_tex_loc, 0)
+
+        # Bind texture, VAO, and draw
+        GL.glActiveTexture(GL.GL_TEXTURE0 + 0)
+        GL.glBindTexture(GL.GL_TEXTURE_2D, self._tex_main)
+
+        GL.glBindVertexArray(self._plane.vao)
+
+        GL.glDrawElements(
+            GL.GL_TRIANGLES,
+            6,
+            GL.GL_UNSIGNED_INT,
+            ctypes.c_void_p(0),
+        )
+
+        GL.glBindVertexArray(0)
+
+        logger.debug(f"[{self.__class__.__name__}][paintGL] Finished.")
         return
 
     def build_program(self, force: bool = False):
@@ -251,20 +305,16 @@ class GLImage:
 
     def load(self, image: main.ImageContainer):
         """
-
         Args:
             image: expecting a 32bit float image encoded as R-G-B(-A)
-
-        Returns:
-
         """
-        self.img_src = image
+        self.image = image
 
         if not self._initialized:
             self.initialize()
 
         glUtils.update_texture_2d(
-            texture_id=self.__tex_main,
+            texture_id=self._tex_main,
             array=image.array.ravel(),
             width=image.width,
             height=image.height,
@@ -276,20 +326,206 @@ class GLImage:
         logger.debug(f"[{self.__class__.__name__}][load] Finished for {image} .")
         return
 
-    def _update_model_view_mat(self):
+    def update(self):
+        # this was originnaly a QWidget method to redrwa the widget
+        pass
+
+    def _update_model_view_mat(self, update_widget=True):
         """
         Re-calculate the model view matrix, which needs to be updated
         prior to rendering if the image or window size have changed.
-        """
-        pass
 
-    def _update_ocio_proc(self):
+        Args:
+            update_widget: redrwa the window if true
+        """
+        # TODO
+        if update_widget:
+            self.update()
+        return
+
+    def _update_ocio_proc(
+        self,
+        force=False,
+    ):
         """
         Update one or more aspects of the OCIO GPU renderer. Parameters
         are cached so not providing a parameter maintains the existing
         state. This will trigger a GL update IF the underlying OCIO ops
         in the processor have changed.
+
+        Args:
+            force: if True force re-processing even if the proc cacheID is similar
+                to the previously runned one.
         """
         assert self.ocioops, "[load] No OcioOperationGraph has been supplied yet !"
 
+        proc = self.ocioops.get_proc()
+        if proc.getCacheID() == self.__previous_shader_cache_id and not force:
+            logger.debug(
+                f"[{self.__class__.__name__}][_update_ocio_proc] Returned early. "
+                f"Current cache ID is similar to previous."
+            )
+            return
+
+        self.__previous_shader_cache_id = proc.getCacheID()
+
+        # noinspection PyArgumentList
+        self.shader_desc = ocio.GpuShaderDesc.CreateShaderDesc(
+            language=ocio.GPU_LANGUAGE_GLSL_4_0
+        )
+        ocio_gpu_proc = proc.getDefaultGPUProcessor()
+        ocio_gpu_proc.extractGpuShaderInfo(self.shader_desc)
+
+        self.allocate_textures()
+        self.build_program()
+
+        # Set initial dynamic property state
+        self.ocioops.grading.update_shader_dyn_prop(shader=self.shader_desc)
+        self.update()
+
+        logger.debug(f"[{self.__class__.__name__}][_update_ocio_proc] Finished.")
         return
+
+    def allocate_textures(self):
+        """
+        Iterate and allocate 1/2/3D textures needed by the current
+        OCIO GPU processor. 3D LUTs become 3D textures and 1D LUTs
+        become 1D or 2D textures depending on their size. Since
+        textures have a hardware enforced width limitation, large LUTs
+        are wrapped onto multiple rows.
+
+        Notes:
+            Each time this runs, the previous set of textures are
+            deleted from GPU memory first.
+        """
+        assert self.shader_desc, "Instance doesn't have an OCIO Shader desc yet !"
+
+        # Delete previous textures
+        self.del_textures_ocio()
+        self.use_uniforms_ocio()
+
+        # reset index buffer
+        self._texture_index_buf = 1
+
+        # Process 3D textures
+        tex_info: ocio.GpuShaderDesc.Texture
+        for tex_info in self.shader_desc.get3DTextures():
+
+            self._add_texture(
+                texture_type=GL.GL_TEXTURE_3D,
+                texture_info=tex_info,
+            )
+
+        # Process 2D textures
+        for tex_info in self.shader_desc.getTextures():
+
+            # is single channel (RED)
+            redonly = tex_info.channel == self.shader_desc.TEXTURE_RED_CHANNEL
+            textype = GL.GL_TEXTURE_2D if tex_info.height > 1 else GL.GL_TEXTURE_1D
+
+            self._add_texture(
+                texture_type=textype,
+                texture_info=tex_info,
+                red_only=redonly,
+            )
+
+        return
+
+    def _add_texture(
+        self,
+        texture_type: Union[GL.GL_TEXTURE_1D, GL.GL_TEXTURE_2D, GL.GL_TEXTURE_3D],
+        texture_info: ocio.GpuShaderDesc.Texture,
+        red_only: bool = False,
+    ) -> str:
+        """
+
+        Args:
+            texture_type: 1D, 2D or 3D
+            texture_info: GPU texture queried from the GpuShaderDesc
+            red_only: True if the passed texture is single channel (RED only)
+
+        Returns:
+            identifier of the texture generated
+        """
+
+        tex_id = GL.glGenTextures(1)
+
+        GL.glActiveTexture(GL.GL_TEXTURE0 + self._texture_index_buf)
+        GL.glBindTexture(texture_type, tex_id)
+        glUtils.set_texture_filtering(texture_type, texture_info.interpolation)
+
+        fmt_tx = GL.GL_R32F if red_only else GL.GL_RGB32F
+        fmt_px = GL.GL_RED if red_only else GL.GL_RGB
+
+        glUtils.create_texture(
+            texture_type=texture_type,
+            texture_info=texture_info,
+            texture_id=tex_id,
+            texture_active_id=self._texture_index_buf,
+            format_texture=fmt_tx,
+            format_pixels=fmt_px,
+        )
+
+        self._textures_ids.append(
+            (
+                tex_id,
+                texture_info.textureName,
+                texture_info.samplerName,
+                texture_type,
+                self._texture_index_buf,
+            )
+        )
+        self._texture_index_buf += 1
+
+        return tex_id
+
+    def use_textures_ocio(self):
+        """
+        Bind all OCIO textures to the shader program.
+        """
+        for tex, tex_name, sampler_name, tex_type, tex_index in self._textures_ids:
+            GL.glActiveTexture(GL.GL_TEXTURE0 + tex_index)
+            GL.glBindTexture(tex_type, tex)
+            GL.glUniform1i(
+                GL.glGetUniformLocation(self.shader_program, sampler_name),
+                tex_index,
+            )
+
+        return
+
+    def del_textures_ocio(self):
+        """
+        Delete all OCIO textures from the GPU.
+        """
+        for tex, tex_name, sampler_name, tex_type, tex_index in self._textures_ids:
+            GL.glDeleteTextures([tex])
+
+        del self._textures_ids[:]
+        return
+
+    def use_uniforms_ocio(self):
+        """
+        Bind and/or update dynamic property uniforms needed for the
+        current OCIO shader build.
+        """
+        assert self.shader_desc, self.shader_program
+
+        for name, uniform_data in self.shader_desc.getUniforms():
+
+            if name not in self._uniforms_ids:
+                uid = GL.glGetUniformLocation(self.shader_program, name)
+                self._uniforms_ids[name] = uid
+            else:
+                uid = self._uniforms_ids[name]
+
+            if uniform_data.type == ocio.UNIFORM_DOUBLE:
+                GL.glUniform1f(uid, uniform_data.getDouble())
+
+        return
+
+    def del_uniforms_ocio(self):
+        """
+        Forget about the dynamic property uniforms needed for the
+        previous OCIO shader build.
+        """
+        self._uniforms_ids.clear()

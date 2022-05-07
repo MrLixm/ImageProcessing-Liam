@@ -9,7 +9,10 @@ import PyOpenColorIO as ocio
 
 from . import c
 
-__all__ = ("update_shader_dyn_prop", "OcioOperationGraph")
+__all__ = (
+    "update_shader_dyn_prop",
+    "OcioOperationGraph",
+)
 
 
 def update_shader_dyn_prop(
@@ -43,7 +46,11 @@ def update_shader_dyn_prop(
 
 
 @dataclass
-class InteractiveLook:
+class GradingInteractive:
+    """
+    List of common grading transform to apply in an interactive context to an image.
+    Call repr() to get a dict representation.
+    """
 
     exposure: float = 1.0
     gamma: float = 1.0
@@ -86,6 +93,13 @@ class InteractiveLook:
             ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY: self.grading_primary,
         }
 
+    def update_shader_dyn_prop(self, shader: Optional[ocio.GpuShaderDesc]):
+
+        for k, v in self.dynamic_props.items():
+            update_shader_dyn_prop(shader=shader, prop_type=k, value=v)
+
+        return
+
     def __repr__(self) -> dict:
         return {
             "exposure": self.exposure,
@@ -106,10 +120,12 @@ class OcioOperationGraph:
         else:
             self.config = config
 
+        self.grading: GradingInteractive = GradingInteractive()
+
         self.target_display = None
         self.target_view = None
         self.target_look: ocio.Look = None
 
-    def get_proc(self):
+    def get_proc(self) -> ocio.Processor:
 
-        return
+        pass

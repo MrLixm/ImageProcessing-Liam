@@ -120,3 +120,68 @@ def compile_shader(glsl_src: str, shader_type: GL.GLenum) -> Optional[GL.GLuint]
         return None
 
     return shader
+
+
+def create_texture(
+    texture_type: Union[GL.GL_TEXTURE_1D, GL.GL_TEXTURE_2D, GL.GL_TEXTURE_3D],
+    texture_info: ocio.GpuShaderDesc.Texture,
+    texture_id: str,
+    texture_active_id: int,
+    format_texture=GL.GL_RGB32F,
+    format_pixels=GL.GL_RGB,
+):
+    """
+    Args:
+        texture_type: 1D, 2D or 3D
+        texture_info: GPU texture queried from the GpuShaderDesc
+        texture_id: name of the current texture
+        texture_active_id: identifier for the currently active texture
+        format_texture: (internalFormat) Number of color components in the texture
+        format_pixels:  format of the pixel data
+    """
+
+    # 3D
+    GL.glActiveTexture(texture_active_id)
+    GL.glBindTexture(texture_type, texture_id)
+    set_texture_filtering(texture_type, texture_info.interpolation)
+
+    if texture_type == GL.GL_TEXTURE_3D:
+        GL.glTexImage3D(
+            texture_type,
+            0,
+            format_texture,
+            texture_info.edgeLen,
+            texture_info.edgeLen,
+            texture_info.edgeLen,
+            0,
+            format_pixels,
+            GL.GL_FLOAT,
+            texture_info.getValues(),
+        )
+
+    elif texture_type == GL.GL_TEXTURE_2D:
+        GL.glTexImage2D(
+            texture_type,
+            0,
+            format_texture,
+            texture_info.width,
+            texture_info.height,
+            0,
+            format_pixels,
+            GL.GL_FLOAT,
+            texture_info.getValues(),
+        )
+    elif texture_type == GL.GL_TEXTURE_1D:
+        GL.glTexImage1D(
+            texture_type,
+            0,
+            format_texture,
+            texture_info.width,
+            0,
+            format_pixels,
+            GL.GL_FLOAT,
+            texture_info.getValues(),
+        )
+
+    else:
+        raise ValueError(f"Unsupported texture_type <{texture_type}>")

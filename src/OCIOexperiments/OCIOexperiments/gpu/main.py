@@ -54,7 +54,7 @@ def convert_gpu(
     config: ocio.Config,
     source: str,
     target: str,
-    look: ocioUtils.InteractiveLook,
+    look: ocioUtils.GradingInteractive,
 ) -> numpy.ndarray:
     """
 
