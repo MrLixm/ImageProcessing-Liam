@@ -12,111 +12,11 @@ from OpenGL import GL
 import PyOpenColorIO as ocio
 
 from . import c
-from . import utils
+from . import main
+from . import glUtils
+from . import ocioUtils
 
 logger = logging.getLogger(f"{c.ABR}.gl")
-
-
-def set_texture_filtering(
-    texture: Union[GL.GL_TEXTURE_1D, GL.GL_TEXTURE_2D, GL.GL_TEXTURE_3D],
-    interpolation: ocio.Interpolation,
-):
-    """
-    Args:
-        texture: OpenGL texture type (GL_TEXTURE_1/2/3D)
-        interpolation: Interpolation enum value.
-    """
-    if interpolation == ocio.INTERP_NEAREST:
-        GL.glTexParameteri(texture, GL.GL_TEXTURE_MIN_FILTER, GL.GL_NEAREST)
-        GL.glTexParameteri(texture, GL.GL_TEXTURE_MAG_FILTER, GL.GL_NEAREST)
-    else:
-        GL.glTexParameteri(texture, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
-        GL.glTexParameteri(texture, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
-
-
-def create_texture2d(width: float, height: float) -> str:
-    """
-    Args:
-        width: width of the texture to create
-        height: height of the texture to create
-
-    Returns:
-        name/identifier of the texture created
-    """
-
-    assert (
-        width and height
-    ), f"[create_texture2d] One of the argument is 0/none: {width} x {height}"
-
-    # generate 1 name of texture for reuse acroos the class
-    tex_main = GL.glGenTextures(1)
-    GL.glActiveTexture(GL.GL_TEXTURE0)
-    # bind this name to a 2D texture
-    update_texture_2d(
-        texture_id=tex_main,
-        array=ctypes.c_void_p(0),
-        width=width,
-        height=height,
-    )
-
-    GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_CLAMP_TO_EDGE)
-    GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP_TO_EDGE)
-    set_texture_filtering(GL.GL_TEXTURE_2D, ocio.INTERP_LINEAR)
-
-    return tex_main
-
-
-def update_texture_2d(
-    texture_id: str,
-    array: Union[numpy.ndarray, ctypes.c_void_p],
-    width: float,
-    height: float,
-):
-    """
-    Args:
-        texture_id: name of the texture to update
-        array: image data as pixels representing the texture
-        width: width of the texture
-        height: height of the texture
-    """
-    GL.glBindTexture(GL.GL_TEXTURE_2D, texture_id)
-    GL.glTexImage2D(
-        GL.GL_TEXTURE_2D,  # target
-        0,  # level
-        GL.GL_RGBA32F,  # internal format
-        width,  # width
-        height,  # height
-        0,  # border (always 0)
-        GL.GL_RGBA,  # format
-        GL.GL_FLOAT,  # type
-        array,  # pixels
-    )
-    return
-
-
-def compile_shader(glsl_src: str, shader_type: GL.GLenum) -> Optional[GL.GLuint]:
-    """
-
-    Args:
-        glsl_src:  Shader source code
-        shader_type: Type of shader to be created, which is an enum adhering
-         to the formatting ``GL_*_SHADER``.
-
-    Returns:
-        Shader object ID, or None if shader compilation fails.
-    """
-    shader = GL.glCreateShader(shader_type)
-    GL.glShaderSource(shader, glsl_src)
-    GL.glCompileShader(shader)
-
-    # check if compilation succeed
-    if not GL.glGetShaderiv(shader, GL.GL_COMPILE_STATUS):
-        logger.error(
-            f"[compile_shader] Shader program compile error: {GL.glGetShaderInfoLog(shader)}"
-        )
-        return None
-
-    return shader
 
 
 @dataclass
@@ -214,24 +114,34 @@ class GLImage:
     """
     Perform OCIO processing on the GPU for an RGB(A) image.
     Image can be changed at anytime with <load> method.
+    Image apperance can also be modified interactively using <transform_interactive>.
     """
 
     def __init__(self):
 
-        self.img_src = utils.V2f(1.0, 1.0)
+        self.ocioops: ocioUtils.OcioOperationGraph = None
+
+        self.img_src: main.ImageContainer = None
         """
-        texture width*height (x*y) information
+        Whole 32bit float Image.
         """
-        self.tex_main: str = None
+        self.__tex_main: str = None
         """
         texture name/identifier
         """
 
-        self.plane: Plane = None
+        self.__plane: Plane = None
         """
         the image plane for viewing the texture
         """
 
+        self.transform_interactive: main.InteractiveLook = main.InteractiveLook()
+        """
+        Common color transformations values that can be modified interactively
+        by the user. 
+        """
+
+        # OpenGL shaders
         self.shader_desc: ocio.GpuShaderDesc = None
         self.shader_program = None
         self.shader_vert = None
@@ -239,7 +149,7 @@ class GLImage:
 
         self.__previous_shader_cache_id = None
         """
-        Store the ID of the last OCIO operation to avoid performing 2 times in a row
+        Stores the ID of the last OCIO operation to avoid performing 2 times in a row
         the same operation.
         """
 
@@ -251,7 +161,7 @@ class GLImage:
         Has the instance been initialized a first time.
         """
         # tex_main is no more None once <initialize> is called.
-        return True if self.tex_main else False
+        return True if self.__tex_main else False
 
     def initialize(self):
         """
@@ -259,8 +169,10 @@ class GLImage:
         """
         assert not self._initialized, "This instance has already been initalized !"
 
-        self.tex_main = create_texture2d(self.img_src.x, self.img_src.y)
-        self.plane = Plane.create()
+        self.__tex_main = glUtils.create_texture2d(
+            self.img_src.width, self.img_src.height
+        )
+        self.__plane = Plane.create()
 
         logger.debug(f"[{self.__class__.__name__}][initialize] Finished.")
         return
@@ -290,7 +202,9 @@ class GLImage:
 
         # Vert shader only needs to be built once TODO move to initialize ?
         if not self.shader_vert:
-            self.shader_vert = compile_shader(c.GLSL_VERT_SRC, GL.GL_VERTEX_SHADER)
+            self.shader_vert = glUtils.compile_shader(
+                c.GLSL_VERT_SRC, GL.GL_VERTEX_SHADER
+            )
             if not self.shader_vert:
                 logger.debug(
                     f"[{self.__class__.__name__}][build_program] Returned early. "
@@ -309,7 +223,7 @@ class GLImage:
         frag_src = c.GLSL_FRAG_OCIO_SRC_FMT.format(
             ocio_src=self.shader_desc.getShaderText()
         )
-        self.shader_frag = compile_shader(frag_src, GL.GL_FRAGMENT_SHADER)
+        self.shader_frag = glUtils.compile_shader(frag_src, GL.GL_FRAGMENT_SHADER)
         if not self.shader_frag:
             logger.debug(
                 f"[{self.__class__.__name__}][build_program] Returned early. "
@@ -335,15 +249,47 @@ class GLImage:
         logger.debug(f"[{self.__class__.__name__}][build_program] Finished.")
         return
 
-    def load(self, array: numpy.ndarray):
+    def load(self, image: main.ImageContainer):
         """
 
         Args:
-            array: expecting a 32bit float image encoded as R-G-B(-A)
+            image: expecting a 32bit float image encoded as R-G-B(-A)
 
         Returns:
 
         """
+        self.img_src = image
 
-        logger.debug(f"[{self.__class__.__name__}][load] Finished.")
+        if not self._initialized:
+            self.initialize()
+
+        glUtils.update_texture_2d(
+            texture_id=self.__tex_main,
+            array=image.array.ravel(),
+            width=image.width,
+            height=image.height,
+        )
+
+        self._update_model_view_mat()
+        self._update_ocio_proc()
+
+        logger.debug(f"[{self.__class__.__name__}][load] Finished for {image} .")
+        return
+
+    def _update_model_view_mat(self):
+        """
+        Re-calculate the model view matrix, which needs to be updated
+        prior to rendering if the image or window size have changed.
+        """
+        pass
+
+    def _update_ocio_proc(self):
+        """
+        Update one or more aspects of the OCIO GPU renderer. Parameters
+        are cached so not providing a parameter maintains the existing
+        state. This will trigger a GL update IF the underlying OCIO ops
+        in the processor have changed.
+        """
+        assert self.ocioops, "[load] No OcioOperationGraph has been supplied yet !"
+
         return
