@@ -2,22 +2,51 @@
 
 """
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal, Optional
 
 import numpy
 
 import PyOpenColorIO as ocio
 
-__all__ = ["InteractiveLook", "convert_gpu"]
+from . import ocioUtils
+
+__all__ = (
+    "ImageContainer",
+    "convert_gpu",
+)
 
 
 @dataclass
-class InteractiveLook:
-    exposure: float = 1.0
-    gamma: float = 1.0
-    contrast: float = 0.0
-    pivot: float = 0.18
-    saturation: float = 1.0
+class ImageContainer:
+    """
+    Contains a whole image with important information about it.
+    """
+
+    array: numpy.ndarray
+    """
+    numpy arrays of pixels
+    """
+    width: float
+    height: float
+    channels: int
+    """
+    Number of channels the array has.
+    """
+    colorspace: ocio.ColorSpace
+    """
+    Colorspace the pixel array is encoded in.
+    """
+    path: Optional[Path]
+    """
+    File path from where this image was stored.
+    """
+
+    def __repr__(self):
+        return (
+            f"ImageContainer ({self.width}*{self.height})*{self.channels}"
+            f" | array[{self.array.dtype}] | with path={self.path}"
+        )
 
 
 def convert_gpu(
@@ -25,7 +54,7 @@ def convert_gpu(
     config: ocio.Config,
     source: str,
     target: str,
-    look: InteractiveLook,
+    look: ocioUtils.InteractiveLook,
 ) -> numpy.ndarray:
     """
 
