@@ -1,22 +1,28 @@
 """
 
 """
+import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Optional, Union, Dict
+from typing import Literal, Optional, Union, Dict, ClassVar
 
 import PyOpenColorIO as ocio
 
 from . import c
+from .PySignal import ClassSignal
 
 __all__ = (
     "update_shader_dyn_prop",
+    "GradingInteractive",
     "OcioOperationGraph",
 )
 
 
+logger = logging.getLogger(f"{c.ABR}.ocioUtils")
+
+
 def update_shader_dyn_prop(
-    shader: Optional[ocio.GpuShaderDesc],
+    shader: ocio.GpuShaderDesc,
     prop_type: ocio.DynamicPropertyType,
     value,
 ) -> Optional[ocio.DynamicProperty]:
@@ -36,8 +42,6 @@ def update_shader_dyn_prop(
         the DynamicProperty from the shader that has been edited for potential further
         modification.
     """
-    if not shader:
-        return  # TODO see if just return or remove this
 
     if shader.hasDynamicProperty(prop_type):
         dyn_prop: ocio.DynamicProperty = shader.getDynamicProperty(prop_type)
@@ -75,6 +79,17 @@ class GradingInteractive:
     - ocio.GRADING_VIDEO
     """
 
+    _dynamicprops: ClassVar = {
+        "exposure": ocio.DYNAMIC_PROPERTY_EXPOSURE,
+        "gamma": ocio.DYNAMIC_PROPERTY_GAMMA,
+        "contrast": ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY,
+        "pivot": ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY,
+        "saturation": ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY,
+        "grading_space": ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY,
+    }
+
+    # TODO signal system
+
     @property
     def grading_primary(self) -> ocio.GradingPrimary:
         gp = ocio.GradingPrimary(self.grading_space)
@@ -83,20 +98,12 @@ class GradingInteractive:
         gp.pivot = self.pivot
         return gp
 
-    @property
-    def dynamic_props(
-        self,
-    ) -> Dict[ocio.DynamicPropertyType, Union[float, ocio.GradingPrimary]]:
-        return {
-            ocio.DYNAMIC_PROPERTY_EXPOSURE: self.exposure,
-            ocio.DYNAMIC_PROPERTY_GAMMA: self.gamma,
-            ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY: self.grading_primary,
-        }
+    def update_all_shader_dyn_prop(self, shader: ocio.GpuShaderDesc):
 
-    def update_shader_dyn_prop(self, shader: Optional[ocio.GpuShaderDesc]):
+        for classattribute, dynamicprop in self._dynamicprops.items():
 
-        for k, v in self.dynamic_props.items():
-            update_shader_dyn_prop(shader=shader, prop_type=k, value=v)
+            v = self.__getattribute__(classattribute)
+            update_shader_dyn_prop(shader=shader, prop_type=dynamicprop, value=v)
 
         return
 
@@ -126,6 +133,7 @@ class OcioOperationGraph:
         self.target_view = None
         self.target_look: ocio.Look = None
 
+    # TODO
     def get_proc(self) -> ocio.Processor:
 
         pass
