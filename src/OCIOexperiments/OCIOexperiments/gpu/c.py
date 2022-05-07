@@ -28,6 +28,9 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
+
+import PyOpenColorIO as ocio
+
 from OCIOexperiments import c
 
 ABR = c.ABR + ".gpu"
@@ -91,4 +94,6 @@ lookups, dynamic property uniforms, and various native GLSL op
 implementations. Note that this shader's cost will increase with 
 additional LUTs in an OCIO processor, since each adds its own 
 2D or 3D texture.
+
+Call of  <.format(ocio_src="")> required.
 """

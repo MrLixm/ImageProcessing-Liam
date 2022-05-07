@@ -21,7 +21,7 @@ def open_domain_to_normalized_log2(
     Source: https://github.com/sobotka/AgX-S2O3/blob/main/AgX.py
 
     Args:
-        in_od: numpy array
+        in_od: floating point image in open-domain state
         in_midgrey:
         minimum_ev:
         maximum_ev:
