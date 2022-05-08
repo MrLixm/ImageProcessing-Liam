@@ -1,3 +1,7 @@
+"""
+Code has been simplified from original.
+source: https://github.com/dgovil/PySignal
+"""
 __author__ = "Dhruv Govil"
 __copyright__ = "Copyright 2016, Dhruv Govil"
 __credits__ = [
