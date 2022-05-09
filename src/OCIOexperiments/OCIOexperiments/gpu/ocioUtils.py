@@ -68,11 +68,15 @@ def to_rgbm_ocio(value: Union[float, Tuple[float, float, float]]) -> ocio.Gradin
 
     grgbm = ocio.GradingRGBM()
     if isinstance(value, float):
+        grgbm.red = value
+        grgbm.green = value
+        grgbm.blue = value
         grgbm.master = value
     else:
         grgbm.red = value[0]
         grgbm.green = value[1]
         grgbm.blue = value[2]
+        grgbm.master = value[3]
 
     return grgbm
 
@@ -92,10 +96,10 @@ class GradingInteractive:
     gamma: float = 1.0
 
     # GradingPrimary
-    contrast: Union[float, Tuple[float, float, float]] = 0.0
-    lift: Union[float, Tuple[float, float, float]] = 0.0
-    offset: Union[float, Tuple[float, float, float]] = 0.0
-    pivot: float = 0.18
+    contrast: Union[float, Tuple[float, float, float, float]] = 1.0
+    lift: Union[float, Tuple[float, float, float, float]] = 0.0
+    offset: Union[float, Tuple[float, float, float, float]] = 0.0
+    pivot: float = 0.18  # TODO check if 0.18 good default
     saturation: float = 1.0
 
     grading_space = ocio.GRADING_LIN
@@ -150,6 +154,19 @@ class GradingInteractive:
         return
 
     @property
+    def is_default(self):
+        return (
+            self.exposure == 1.0
+            and self.contrast == 1.0
+            and self.gamma == 1.0
+            and self.pivot == 0.18
+            and self.lift == 0.0
+            and self.offset == 0.0
+            and self.saturation == 1.0
+            and self.grading_space == ocio.GRADING_LIN
+        )
+
+    @property
     def grading_primary(self) -> ocio.GradingPrimary:
 
         gp = ocio.GradingPrimary(self.grading_space)
@@ -172,13 +189,35 @@ class GradingInteractive:
 
 
 class OcioOperationGraph:
+    """
+    Describe color operations to perform on an image that has just been decoded from disk.
+    The whole pipeline is described: ``input-> working space -> grading -> display``.
+
+    The workspace colorspace is assumed to be the role SCENE_LINEAR by default but can
+    be changed. It can be "log-flavored" so you could for example set
+    <GradingInteractive> grading_space to <ocio.GRADING_LOG>
+    """
+
     def __init__(self, config: Union[Path, ocio.Config]):
 
-        self.config: ocio.Config
+        self._config: ocio.Config
         if isinstance(config, Path):
-            self.config = ocio.Config().CreateFromFile(str(config))
+            self._config = ocio.Config().CreateFromFile(str(config))
         else:
-            self.config = config
+            self._config = config
+
+        self._config.validate()
+
+        self.input_encoding: str = None
+        """
+        Also called IDT. 
+        Conversion to perform to convert the input image to the workspace colorspace.
+        """
+
+        self.workspace_colorspace: str = ocio.ROLE_SCENE_LINEAR
+        """
+        Interchange colorspace for all operations.
+        """
 
         self.grading: GradingInteractive = GradingInteractive()
         """
@@ -186,11 +225,89 @@ class OcioOperationGraph:
         the display conversion.
         """
 
-        self.target_display = None
-        self.target_view = None
-        self.target_look: ocio.Look = None
+        # to Display conversions
+        self.target_display: str = None
+        self.target_view: str = None
+        self.target_looks: Optional[str] = None
+        """
+        List of Looks to apply following the OCIO conventions :
+        
+        Potential comma (or colon) delimited list of look names,
+        where +/- prefixes are optionally allowed to denote forward/inverse look
+        specification. (And forward is assumed in the absence of either).
+        """
 
-    # TODO
     def get_proc(self) -> ocio.Processor:
 
-        pass
+        self.validate()
+
+        grptransform = ocio.GroupTransform()
+        "master transform used to generate the processor"
+
+        trsfm = ocio.ColorSpaceTransform(
+            src=self.input_encoding,
+            dst=self.workspace_colorspace,
+        )
+        grptransform.appendTransform(trsfm)
+
+        # TODO check if necessary as OCIO might already applied optimisation in the proc
+        if not self.grading.is_default:
+
+            trsfm = ocio.GradingPrimaryTransform(
+                self.grading.grading_primary,
+                self.grading.grading_space,
+                True,
+            )
+            grptransform.appendTransform(trsfm)
+
+            trsfm = ocio.ExposureContrastTransform(
+                exposure=self.grading.exposure,
+                dynamicExposure=True,
+            )
+            grptransform.appendTransform(trsfm)
+
+            trsfm = ocio.ExposureContrastTransform(
+                gamma=self.grading.gamma,
+                pivot=0.18,
+                dynamicGamma=True,
+            )
+            grptransform.appendTransform(trsfm)
+
+        if self.target_looks:
+            trsfm = ocio.LookTransform()
+            trsfm.setSrc(self.workspace_colorspace)
+            trsfm.setDst(self.workspace_colorspace)
+            trsfm.setLooks(self.target_looks)
+            grptransform.appendTransform(trsfm)
+
+        trsfm = ocio.DisplayViewTransform(
+            src=self.workspace_colorspace,
+            display=self.target_display,
+            view=self.target_view,
+        )
+        grptransform.appendTransform(trsfm)
+
+        return self._config.getProcessor(grptransform)
+
+    def validate(self):
+        """
+        Raises:
+            AssertionError: if this instance is malformed.
+        """
+        assert self.input_encoding, "Missing input_encoding colorspace."
+        assert self.target_display, "Missing target_display."
+        assert self.target_view, "Missing target_view."
+
+        assert self._config.getColorSpace(
+            self.input_encoding
+        ), f"Can't find input colorspace <{self.input_encoding}>"
+
+        assert (
+            self.target_display in self._config.getDisplays()
+        ), f"Can't find target display <{self.target_display}>."
+
+        assert self.target_view in self._config.getViews(
+            self.target_display
+        ), f"Can't find target view <{self.target_view}>."
+
+        return
