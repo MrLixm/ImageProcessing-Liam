@@ -48,41 +48,16 @@ class TestGradingInteractive(unittest.TestCase):
 
         gi.contrast = (0.1, 1, 0.1, 1)
         self.assertFalse(
-            self.rgbm_equal_rgbm(gp.contrast, self.to_rgbm((0.1, 1, 0.1, 1))),
+            self.rgbm_almostequal_rgbm(gp.contrast, self.to_rgbm((0.1, 1, 0.1, 1))),
             f"gp.contrast = {gp.contrast}",
         )
         gp = gi.grading_primary
         self.assertTrue(
-            self.rgbm_equal_rgbm(gp.contrast, self.to_rgbm((0.1, 1, 0.1, 1))),
+            self.rgbm_almostequal_rgbm(gp.contrast, self.to_rgbm((0.1, 1, 0.1, 1))),
             f"gp.contrast = {gp.contrast}",
         )
 
         return
-
-    def test_signals(self):
-
-        gi = ocioUtils.GradingInteractive()
-        gi.sgn_dynamicprops.connect(self._signal_receiver)
-
-        gi.exposure = 2.5
-
-        self.assertEqual(self.dynamicprop, ocio.DYNAMIC_PROPERTY_EXPOSURE)
-        self.assertEqual(self.dynamicprop_value, 2.5)
-
-        gi.gamma = 2.2
-
-        self.assertEqual(self.dynamicprop, ocio.DYNAMIC_PROPERTY_GAMMA)
-        self.assertEqual(self.dynamicprop_value, 2.2)
-
-        gi.saturation = 4.6
-
-        self.assertEqual(self.dynamicprop, ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY)
-        self.assertEqual(self.dynamicprop_value, 4.6)
-
-        gi.grading_space = ocio.GRADING_LIN
-
-        self.assertEqual(self.dynamicprop, ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY)
-        self.assertEqual(self.dynamicprop_value, ocio.GRADING_LIN)
 
     def test_properties(self):
 
@@ -123,24 +98,70 @@ class TestGradingInteractive(unittest.TestCase):
 
         return
 
-    def _signal_receiver(self, dynamicprop, value):
-        self.dynamicprop = dynamicprop
-        self.dynamicprop_value = value
-        return
-
     @staticmethod
     def to_rgbm(v):
         return ocex.wrappers.to_rgbm(v)
 
     @staticmethod
-    def rgbm_equal_rgbm(a, b):
-
+    def rgbm_equal_rgbm(a: ocio.GradingRGBM, b: ocio.GradingRGBM) -> bool:
         return (
             a.red == b.red
             and a.green == b.green
             and a.blue == b.blue
             and a.master == b.master
         )
+
+    @staticmethod
+    def rgbm_almostequal_rgbm(a: ocio.GradingRGBM, b: ocio.GradingRGBM) -> bool:
+        return (
+            bool(numpy.isclose(a.red, b.red))
+            and bool(numpy.isclose(a.green, b.green))
+            and bool(numpy.isclose(a.blue, b.blue))
+            and bool(numpy.isclose(a.master, b.master))
+        )
+
+
+class TestGradingInteractiveSignals(unittest.TestCase):
+    def setUp(self):
+        self.gi = ocioUtils.GradingInteractive()
+        self.dynamicprop = None
+        self.dynamicprop_value = None
+        return
+
+    def tearDown(self):
+        self.gi = None
+        self.dynamicprop = None
+        self.dynamicprop_value = None
+        return
+
+    def test_signals(self):
+
+        self.gi.sgn_dynamicprops.connect(self._signal_receiver)
+
+        self.gi.exposure = 2.5
+
+        self.assertEqual(self.dynamicprop, ocio.DYNAMIC_PROPERTY_EXPOSURE)
+        self.assertEqual(self.dynamicprop_value, 2.5)
+
+        self.gi.gamma = 2.2
+
+        self.assertEqual(self.dynamicprop, ocio.DYNAMIC_PROPERTY_GAMMA)
+        self.assertEqual(self.dynamicprop_value, 2.2)
+
+        self.gi.saturation = 4.6
+
+        self.assertEqual(self.dynamicprop, ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY)
+        self.assertEqual(self.dynamicprop_value, 4.6)
+
+        self.gi.grading_space = ocio.GRADING_LIN
+
+        self.assertEqual(self.dynamicprop, ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY)
+        self.assertEqual(self.dynamicprop_value, ocio.GRADING_LIN)
+
+    def _signal_receiver(self, dynamicprop, value):
+        self.dynamicprop = dynamicprop
+        self.dynamicprop_value = value
+        return
 
 
 class TestGradingInteractiveData(unittest.TestCase):

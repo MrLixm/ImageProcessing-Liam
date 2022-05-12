@@ -71,9 +71,9 @@ class GradingInteractive:
     gamma: float = 1.0
 
     # GradingPrimary
-    contrast: Union[float, Tuple[float, float, float, float]] = 1.0
-    lift: Union[float, Tuple[float, float, float, float]] = 0.0
-    offset: Union[float, Tuple[float, float, float, float]] = 0.0
+    contrast: Union[float, Tuple[float, float, float]] = 1.0
+    lift: Union[float, Tuple[float, float, float]] = 0.0
+    offset: Union[float, Tuple[float, float, float]] = 0.0
     pivot: float = 0.18
     saturation: float = 1.0
 
@@ -180,7 +180,13 @@ class GradingInteractive:
 
         gp = ocio.GradingPrimary(self.grading_space)
 
-        gp.contrast = ocex.wrappers.to_rgbm(self.contrast)
+        # HACK: https://github.com/AcademySoftwareFoundation/OpenColorIO/issues/1643
+        if isinstance(self.contrast, tuple):
+            contrast = tuple(map(lambda f: f * 0.999999, self.contrast))
+        else:
+            contrast = self.contrast
+
+        gp.contrast = ocex.wrappers.to_rgbm(contrast)
         gp.lift = ocex.wrappers.to_rgbm(self.lift)
         gp.offset = ocex.wrappers.to_rgbm(self.offset)
         gp.pivot = self.pivot
