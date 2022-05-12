@@ -67,14 +67,14 @@ class GradingInteractive:
     associated to an OCIO dynamic property is modified.
     """
 
-    exposure: float = 1.0
+    exposure: float = 0.0
     gamma: float = 1.0
 
     # GradingPrimary
     contrast: Union[float, Tuple[float, float, float, float]] = 1.0
     lift: Union[float, Tuple[float, float, float, float]] = 0.0
     offset: Union[float, Tuple[float, float, float, float]] = 0.0
-    pivot: float = 0.18  # TODO check if 0.18 good default
+    pivot: float = 0.18
     saturation: float = 1.0
 
     grading_space = ocio.GRADING_LIN
@@ -92,14 +92,20 @@ class GradingInteractive:
     - ocio.GRADING_VIDEO
     """
 
-    _dynamicprops: ClassVar[Dict[str, ocio.DynamicPropertyType]] = {
-        "exposure": ocio.DYNAMIC_PROPERTY_EXPOSURE,
-        "gamma": ocio.DYNAMIC_PROPERTY_GAMMA,
-        "contrast": ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY,
-        "pivot": ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY,
-        "saturation": ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY,
-        "grading_space": ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY,
+    _propconfig: ClassVar[Dict[str, ocio.DynamicPropertyType]] = {
+        "exposure": (exposure, ocio.DYNAMIC_PROPERTY_EXPOSURE),
+        "gamma": (gamma, ocio.DYNAMIC_PROPERTY_GAMMA),
+        "contrast": (contrast, ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY),
+        "pivot": (pivot, ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY),
+        "lift": (lift, ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY),
+        "offset": (offset, ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY),
+        "saturation": (saturation, ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY),
+        "grading_space": (grading_space, ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY),
     }
+    """
+    | Dict of {*class attribute name*: *config tuple*, ...}.
+    | Where *config tuple* = (*default value*, *associated dynamic prop*)
+    """
 
     sgn_dynamicprops: ClassVar[Signal] = Signal()
     """
@@ -118,27 +124,55 @@ class GradingInteractive:
             "saturation": self.saturation,
         }
 
+    def __str__(self) -> str:
+        return str(self.__repr__())
+
     def __setattr__(self, key, value):
 
         # emit which dynamic properties changed to update the OCIO processor upstream
-        dp = self._dynamicprops.get(key)
+        dp: Optional[tuple] = self._propconfig.get(key)
         if dp is not None:
+            dp: ocio.DynamicPropertyType = dp[1]
             self.sgn_dynamicprops.emit(dp, value)
 
         super().__setattr__(key, value)
         return
 
+    @classmethod
+    def get_default(cls, name) -> float:
+        """
+        Returns:
+            default value (producing a passthrough operation) for the given operation name
+        """
+        return cls._propconfig.get(name)[0]
+
     @property
     def is_default(self):
+        # HACK saturation
         return (
-            self.exposure == 1.0
-            and self.contrast == 1.0
-            and self.gamma == 1.0
-            and self.pivot == 0.18
-            and self.lift == 0.0
-            and self.offset == 0.0
-            and self.saturation == 1.0
-            and self.grading_space == ocio.GRADING_LIN
+            self._is_default_except_sat
+            and self.saturation == self.get_default("saturation")
+            and self.grading_space == self.get_default("grading_space")
+        )
+
+    @property
+    def is_modified_sat_only(self):
+        # HACK saturation :
+        # https://github.com/AcademySoftwareFoundation/OpenColorIO/issues/1642
+        return self._is_default_except_sat and self.saturation != self.get_default(
+            "saturation"
+        )
+
+    @property
+    def _is_default_except_sat(self):
+        # HACK saturation :
+        return (
+            self.exposure == self.get_default("exposure")
+            and self.contrast == self.get_default("contrast")
+            and self.gamma == self.get_default("gamma")
+            and self.pivot == self.get_default("pivot")
+            and self.lift == self.get_default("lift")
+            and self.offset == self.get_default("offset")
         )
 
     @property
@@ -151,12 +185,18 @@ class GradingInteractive:
         gp.offset = ocex.wrappers.to_rgbm(self.offset)
         gp.pivot = self.pivot
         gp.saturation = self.saturation
+
+        # HACK saturation :
+        # https://github.com/AcademySoftwareFoundation/OpenColorIO/issues/1642
+        if self.is_modified_sat_only:
+            gp.clampBlack = -150
+
         return gp
 
     def update_all_shader_dyn_prop(self, shader: ocio.GpuShaderDesc):
 
-        for classattribute, dynamicprop in self._dynamicprops.items():
-
+        for classattribute, data in self._propconfig.items():
+            _, dynamicprop = data
             v = self.__getattribute__(classattribute)
             update_shader_dyn_prop(shader=shader, prop_type=dynamicprop, value=v)
 
