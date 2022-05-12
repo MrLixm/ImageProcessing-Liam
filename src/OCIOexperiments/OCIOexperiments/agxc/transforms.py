@@ -79,7 +79,7 @@ def look_punchy(
     array = array**punchy_gamma
     # saturation based on CDL formula
     # see https://video.stackexchange.com/q/9866
-    luma = array * 0.2
+    luma = array * (0.2126, 0.7152, 0.0722)
     luma = numpy.sum(luma, axis=2)
     luma = numpy.stack((luma,) * 3, axis=-1)
     array -= luma
