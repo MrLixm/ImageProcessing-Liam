@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Literal, List, Union, Any
+from typing import Literal, List, Union, Any, Tuple
 
 import cv2
 import numpy
@@ -10,9 +10,32 @@ import PIL.Image
 
 from . import c
 
-__all__ = ["array_read", "array_write"]
+__all__ = (
+    "make_constant_image",
+    "array_read",
+    "array_write",
+)
 
 logger = logging.getLogger(f"{c.ABR}.io")
+
+
+def make_constant_image(
+    color: Tuple[float, float, float],
+    size: Tuple[int, int] = (4, 4),
+) -> numpy.ndarray:
+    """
+    Create a 32float R-G-B image of the given dimensions filled with
+     the given constant color.
+
+    Args:
+        color: a color specified as R-G-B
+        size: dimensions of the image to create as (width, height)
+    """
+    return numpy.full(
+        (size[0], size[1], 3),
+        color,
+        dtype=numpy.float32,
+    )
 
 
 def array_read(
