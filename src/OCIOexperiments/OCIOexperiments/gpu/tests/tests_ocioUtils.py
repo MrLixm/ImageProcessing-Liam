@@ -130,7 +130,7 @@ class TestGradingInteractive(unittest.TestCase):
 
     @staticmethod
     def to_rgbm(v):
-        return ocioUtils.to_rgbm_ocio(v)
+        return ocex.wrappers.to_rgbm(v)
 
     @staticmethod
     def rgbm_equal_rgbm(a, b):

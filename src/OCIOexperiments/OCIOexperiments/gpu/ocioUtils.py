@@ -14,6 +14,7 @@ from typing import (
 
 import PyOpenColorIO as ocio
 
+import OCIOexperiments as ocex
 from . import c
 from .PySignal import Signal
 
@@ -53,32 +54,6 @@ def update_shader_dyn_prop(
         dyn_prop: ocio.DynamicProperty = shader.getDynamicProperty(prop_type)
         dyn_prop.setDouble(value)
         return dyn_prop
-
-
-def to_rgbm_ocio(value: Union[float, Tuple[float, float, float]]) -> ocio.GradingRGBM:
-    """
-    Convert a python object to an OCIO GradingRGBM instance to use for GradingPrimary.
-
-    Args:
-        value: a value to apply on all channel or one different per-channel (RGB)
-
-    Returns:
-        GradingRGBM instance
-    """
-
-    grgbm = ocio.GradingRGBM()
-    if isinstance(value, float):
-        grgbm.red = value
-        grgbm.green = value
-        grgbm.blue = value
-        grgbm.master = value
-    else:
-        grgbm.red = value[0]
-        grgbm.green = value[1]
-        grgbm.blue = value[2]
-        grgbm.master = value[3]
-
-    return grgbm
 
 
 @dataclass
@@ -171,9 +146,9 @@ class GradingInteractive:
 
         gp = ocio.GradingPrimary(self.grading_space)
 
-        gp.contrast = to_rgbm_ocio(self.contrast)
-        gp.lift = to_rgbm_ocio(self.lift)
-        gp.offset = to_rgbm_ocio(self.offset)
+        gp.contrast = ocex.wrappers.to_rgbm(self.contrast)
+        gp.lift = ocex.wrappers.to_rgbm(self.lift)
+        gp.offset = ocex.wrappers.to_rgbm(self.offset)
         gp.pivot = self.pivot
         gp.saturation = self.saturation
         return gp
