@@ -1,5 +1,5 @@
 #version: 0.1.4
-ocio_profile_version: 1
+ocio_profile_version: 2
 description: |
   AgX config by Troy Sobotka. Modified with full permissions from
   Troy Sobotka. CAT used is <Bradford>.
@@ -51,6 +51,12 @@ looks:
     process_space: AgX Base
     description: A punchy and more chroma laden look.
     transform: !<CDLTransform> { power: [ 1.3, 1.3, 1.3 ], sat: 1.2 }
+
+  - !<Look>
+    name: OverExposed
+    process_space: scene_linear
+    description: Overexpose the scene
+    transform: !<ExposureContrastTransform> { exposure: 1.5 }
 
 
 colorspaces:
