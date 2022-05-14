@@ -17,6 +17,26 @@ from OCIOexperiments.io import img2str
 REMOVE_WRITES = True
 
 
+def apply_gi_on_img(
+    img: numpy.ndarray,
+    gi: ocioUtils.GradingInteractive,
+    config: ocio.Config,
+) -> numpy.ndarray:
+
+    tsfm_gp = ocio.GradingPrimaryTransform(
+        gi.grading_primary,
+        gi.grading_space,
+        True,
+    )
+
+    proc: ocio.Processor = config.getProcessor(tsfm_gp)
+    proc: ocio.CPUProcessor = proc.getDefaultCPUProcessor()
+
+    out = img.copy()
+    proc.applyRGB(out)
+    return out
+
+
 class TestGradingInteractive(unittest.TestCase):
     def setUp(self):
         self.dynamicprop = None
@@ -43,7 +63,7 @@ class TestGradingInteractive(unittest.TestCase):
             self.rgbm_equal_rgbm(gp.contrast, self.to_rgbm(0.666, "*")),
             f"{gp.contrast}",
         )
-        self.assertTrue(self.rgbm_equal_rgbm(gp.lift, self.to_rgbm(0.666, "+")))
+        self.assertTrue(self.rgbm_equal_rgbm(gp.lift, self.to_rgbm(0.666, "*")))
         self.assertTrue(self.rgbm_equal_rgbm(gp.offset, self.to_rgbm(0.666, "+")))
         self.assertFalse(self.rgbm_equal_rgbm(gp.offset, self.to_rgbm(1.8, "+")))
         self.assertEqual(gp.pivot, 0.666)
@@ -171,80 +191,33 @@ class TestGradingInteractiveSignals(unittest.TestCase):
         return
 
 
-class TestGradingInteractiveData(unittest.TestCase):
+class TestGradingInteractiveData(testing.BaseTransformtest, unittest.TestCase):
 
-    config_path = ocex.c.DATA_DIR / "configs" / "AgXc-v0.1.4" / "config.ocio"
-    out_dir = Path(__file__).parent / "_outputs"
-    render1 = ocex.c.DATA_DIR / "renders" / "dragonscene_ap0.half.1001.exr"
+    config = ocio.Config().CreateFromFile(
+        str(ocex.c.DATA_DIR / "configs" / "AgXc-v0.1.4" / "config.ocio")
+    )
 
     imgs: testing.DataArrayStack = testing.DataArrayStack(
         (0.5, 0.1, 0.1),
         (0.36, 1.4523, 0.7),
-        render1,
+        ocex.c.DATA_DIR / "renders" / "dragonscene_ap0.half.1001.exr",
     )
 
+    method = [apply_gi_on_img]
+
     def setUp(self):
-
-        self._config: ocio.Config = ocio.Config().CreateFromFile(str(self.config_path))
-
-        self.gi = ocioUtils.GradingInteractive()
-        self.expected: testing.DataArrayStack = None
-        self.precision = 4
-        return
+        super().setUp()
 
     def tearDown(self):
-
-        img: testing.DataArray
-        for i, img in enumerate(self.imgs):
-
-            img: numpy.ndarray = img.array
-
-            with self.subTest(f"{i} - Image {img2str(img)}"):
-
-                result = self._apply_gi_on_img(img)
-                expected: testing.DataArray = self.expected[i]
-                expected: numpy.ndarray = expected.array
-
-                msg = (
-                    f"Original={img2str(img)}-{result.shape}\n        "
-                    f"Result={img2str(result)}-{result.shape},\n      "
-                    f"Expected={img2str(expected)}-{expected.shape}"
-                )
-                self.log(msg, subtestId=i)
-                numpy.testing.assert_almost_equal(result, expected, self.precision, msg)
-
-        self._config = None
-        self.gi = None
-        self.expected = None
-        return
-
-    def log(self, msg: str, subtestId: int = 0):
-        out = ""
-        if subtestId == 0:
-            out += f"{'='*99}\n[{self.id()}]\n"
-        out += f"↳ {subtestId} - {msg}\n"
-        print(out)
-
-    def _apply_gi_on_img(self, img: numpy.ndarray) -> numpy.ndarray:
-
-        tsfm_gp = ocio.GradingPrimaryTransform(
-            self.gi.grading_primary,
-            self.gi.grading_space,
-            True,
-        )
-
-        proc: ocio.Processor = self._config.getProcessor(tsfm_gp)
-        proc: ocio.CPUProcessor = proc.getDefaultCPUProcessor()
-
-        out = img.copy()
-        proc.applyRGB(out)
-        return out
+        super().tearDown()
 
     def test_expoNsaturate(self):
 
-        self.gi.exposure = -0.5
-        self.gi.saturation = 2.0
+        gi = ocioUtils.GradingInteractive()
+        gi.exposure = -0.5
+        gi.saturation = 2.0
 
+        self.params = {"gi": gi, "config": self.config}
         self.expected = self.imgs.apply_op(ocex.transforms.saturate, 2.0)
         self.expected = self.expected.apply_op(ocex.transforms.exposure, -0.5)
 
@@ -252,17 +225,21 @@ class TestGradingInteractiveData(unittest.TestCase):
 
     def test_saturate_2x0(self):
 
-        self.gi.saturation = 2.0
-        print(self.gi.grading_primary)
+        gi = ocioUtils.GradingInteractive()
+        gi.saturation = 2.0
+
+        self.params = {"gi": gi, "config": self.config}
         self.expected = self.imgs.apply_op(ocex.transforms.saturate, 2.0)
 
         return
 
     def test_saturate_2x0_log(self):
 
-        self.gi.saturation = 2.0
-        self.gi.grading_space = ocio.GRADING_LOG
-        print(self.gi.grading_primary)
+        gi = ocioUtils.GradingInteractive()
+        gi.saturation = 2.0
+        gi.grading_space = ocio.GRADING_LOG
+
+        self.params = {"gi": gi, "config": self.config}
         self.expected = self.imgs.apply_op(ocex.transforms.saturate, 2.0)
 
         return
