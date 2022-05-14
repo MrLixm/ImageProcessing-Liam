@@ -1,6 +1,7 @@
 import unittest
 from functools import partial
 from pathlib import Path
+from typing import Tuple
 
 import PyOpenColorIO as ocio
 import colour.io
@@ -8,7 +9,9 @@ import numpy
 import numpy.testing
 
 import OCIOexperiments as ocex
+from OCIOexperiments import testing
 from OCIOexperiments.gpu import ocioUtils
+from OCIOexperiments.io import img2str
 
 
 REMOVE_WRITES = True
@@ -37,23 +40,27 @@ class TestGradingInteractive(unittest.TestCase):
 
         gp = gi.grading_primary
         self.assertTrue(
-            self.rgbm_equal_rgbm(gp.contrast, self.to_rgbm(0.666)),
+            self.rgbm_equal_rgbm(gp.contrast, self.to_rgbm(0.666, "*")),
             f"{gp.contrast}",
         )
-        self.assertTrue(self.rgbm_equal_rgbm(gp.lift, self.to_rgbm(0.666)))
-        self.assertTrue(self.rgbm_equal_rgbm(gp.offset, self.to_rgbm(0.666)))
-        self.assertFalse(self.rgbm_equal_rgbm(gp.offset, self.to_rgbm(1.8)))
+        self.assertTrue(self.rgbm_equal_rgbm(gp.lift, self.to_rgbm(0.666, "+")))
+        self.assertTrue(self.rgbm_equal_rgbm(gp.offset, self.to_rgbm(0.666, "+")))
+        self.assertFalse(self.rgbm_equal_rgbm(gp.offset, self.to_rgbm(1.8, "+")))
         self.assertEqual(gp.pivot, 0.666)
         self.assertEqual(gp.saturation, 0.666)
 
         gi.contrast = (0.1, 1, 0.1, 1)
         self.assertFalse(
-            self.rgbm_almostequal_rgbm(gp.contrast, self.to_rgbm((0.1, 1, 0.1, 1))),
+            self.rgbm_almostequal_rgbm(
+                gp.contrast, self.to_rgbm((0.1, 1, 0.1, 1), "*")
+            ),
             f"gp.contrast = {gp.contrast}",
         )
         gp = gi.grading_primary
         self.assertTrue(
-            self.rgbm_almostequal_rgbm(gp.contrast, self.to_rgbm((0.1, 1, 0.1, 1))),
+            self.rgbm_almostequal_rgbm(
+                gp.contrast, self.to_rgbm((0.1, 1, 0.1, 1), "*")
+            ),
             f"gp.contrast = {gp.contrast}",
         )
 
@@ -99,8 +106,8 @@ class TestGradingInteractive(unittest.TestCase):
         return
 
     @staticmethod
-    def to_rgbm(v):
-        return ocex.wrappers.to_rgbm(v)
+    def to_rgbm(v, m):
+        return ocex.wrappers.to_rgbm(v, m)
 
     @staticmethod
     def rgbm_equal_rgbm(a: ocio.GradingRGBM, b: ocio.GradingRGBM) -> bool:
@@ -168,28 +175,57 @@ class TestGradingInteractiveData(unittest.TestCase):
 
     config_path = ocex.c.DATA_DIR / "configs" / "AgXc-v0.1.4" / "config.ocio"
     out_dir = Path(__file__).parent / "_outputs"
+    render1 = ocex.c.DATA_DIR / "renders" / "dragonscene_ap0.half.1001.exr"
 
-    def setUp(self) -> None:
+    imgs: testing.DataArrayStack = testing.DataArrayStack(
+        (0.5, 0.1, 0.1),
+        (0.36, 1.4523, 0.7),
+        render1,
+    )
 
-        self.config: ocio.Config = ocio.Config().CreateFromFile(str(self.config_path))
+    def setUp(self):
 
-        img = ocex.c.DATA_DIR / "renders" / "dragonscene_ap0.half.1001.exr"
-        self.img_render = colour.io.read_image(str(img))
-        print(f"Read <dragonscene_ap0.half.1001.exr>: {self.img_render.shape}")
-
-        self.img_red = ocex.io.make_constant_image((0.5, 0.1, 0.1))
+        self._config: ocio.Config = ocio.Config().CreateFromFile(str(self.config_path))
 
         self.gi = ocioUtils.GradingInteractive()
+        self.expected: testing.DataArrayStack = None
+        self.precision = 4
         return
 
-    def tearDown(self) -> None:
-        self.config = None
-        self.img_red = None
-        self.img_render = None
+    def tearDown(self):
+
+        img: testing.DataArray
+        for i, img in enumerate(self.imgs):
+
+            img: numpy.ndarray = img.array
+
+            with self.subTest(f"{i} - Image {img2str(img)}"):
+
+                result = self._apply_gi_on_img(img)
+                expected: testing.DataArray = self.expected[i]
+                expected: numpy.ndarray = expected.array
+
+                msg = (
+                    f"Original={img2str(img)}-{result.shape}\n        "
+                    f"Result={img2str(result)}-{result.shape},\n      "
+                    f"Expected={img2str(expected)}-{expected.shape}"
+                )
+                self.log(msg, subtestId=i)
+                numpy.testing.assert_almost_equal(result, expected, self.precision, msg)
+
+        self._config = None
         self.gi = None
+        self.expected = None
         return
 
-    def _apply_gi_on_img(self, img: numpy.ndarray):
+    def log(self, msg: str, subtestId: int = 0):
+        out = ""
+        if subtestId == 0:
+            out += f"{'='*99}\n[{self.id()}]\n"
+        out += f"↳ {subtestId} - {msg}\n"
+        print(out)
+
+    def _apply_gi_on_img(self, img: numpy.ndarray) -> numpy.ndarray:
 
         tsfm_gp = ocio.GradingPrimaryTransform(
             self.gi.grading_primary,
@@ -197,66 +233,37 @@ class TestGradingInteractiveData(unittest.TestCase):
             True,
         )
 
-        proc: ocio.Processor = self.config.getProcessor(tsfm_gp)
+        proc: ocio.Processor = self._config.getProcessor(tsfm_gp)
         proc: ocio.CPUProcessor = proc.getDefaultCPUProcessor()
 
-        proc.applyRGB(img)
-        return
+        out = img.copy()
+        proc.applyRGB(out)
+        return out
 
-    def test_write_render_1(self):
-
-        img = self.img_render
+    def test_expoNsaturate(self):
 
         self.gi.exposure = -0.5
         self.gi.saturation = 2.0
 
-        self._apply_gi_on_img(img)
-
-        out_path = self.out_dir / f"dragonscene.{self.id()}.jpg"
-        colour.io.write_image(img, str(out_path))
-        self.assertTrue(out_path.exists())
-
-        if REMOVE_WRITES:
-            out_path.unlink()
+        self.expected = self.imgs.apply_op(ocex.transforms.saturate, 2.0)
+        self.expected = self.expected.apply_op(ocex.transforms.exposure, -0.5)
 
         return
 
-    def test_img_red_sat_1(self):
+    def test_saturate_2x0(self):
 
-        img = self.img_red
-        s = 2.0
-
-        self.gi.saturation = s
-
-        self._apply_gi_on_img(img)
-
-        expected = ocex.transforms.saturate(img, s)
-        numpy.testing.assert_almost_equal(
-            img,
-            expected,
-            4,
-            f"Got {img[1][1]} but expected {expected[1][1]}",
-        )
+        self.gi.saturation = 2.0
+        print(self.gi.grading_primary)
+        self.expected = self.imgs.apply_op(ocex.transforms.saturate, 2.0)
 
         return
 
-    def test_img_red_sat_log(self):
-
-        img = self.img_red
+    def test_saturate_2x0_log(self):
 
         self.gi.saturation = 2.0
         self.gi.grading_space = ocio.GRADING_LOG
-
-        self._apply_gi_on_img(img)
-
-        print(img[1][1])
-        expected = ocex.io.make_constant_image((0.815, 0.015, 0.015))
-        numpy.testing.assert_almost_equal(
-            img,
-            expected,
-            4,
-            f"Got {img[1][1]} but expected {expected[1][1]}",
-        )
+        print(self.gi.grading_primary)
+        self.expected = self.imgs.apply_op(ocex.transforms.saturate, 2.0)
 
         return
 

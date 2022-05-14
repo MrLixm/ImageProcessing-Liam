@@ -2,79 +2,16 @@
 
 """
 import unittest
-from abc import ABC, abstractmethod
-from typing import Callable, List
-
-import numpy.testing
 
 import OCIOexperiments as ocex
-
-
-def img2str(img: numpy.ndarray) -> str:
-
-    img: numpy.ndarray = img[0][0]
-
-    with numpy.printoptions(
-        precision=3,
-        suppress=True,
-        formatter={"float": "{: 0.5f}".format},
-    ):
-        return f"{img}"
-
-
-class BaseTransformtest(ABC):
-
-    colors = (
-        (0.5, 0.1, 0.1),
-        (0.67, 1.53, 1.456),
-        (-0.67, 0.145, 1.456),
-    )
-
-    # HACK: wrap the function in a list so when called in class, self is not passed
-    method: List[Callable[[numpy.ndarray, ...], numpy.ndarray]] = None
-
-    @abstractmethod
-    def setUp(self):
-
-        self.imgs = map(ocex.io.make_constant_image, self.colors)
-        self.expected: tuple = None
-        self.params: dict = {}
-        "kwargs to pass to self.method"
-        self.precison: int = 4
-
-    @abstractmethod
-    def tearDown(self):
-
-        for i, img in enumerate(self.imgs):
-
-            with self.subTest(f"{i} - Image {img2str(img)}"):
-
-                result = self.method[0](img, **self.params)
-                expected = ocex.io.make_constant_image(self.expected[i])
-
-                msg = f"Result={img2str(result)}, Expected={img2str(expected)}"
-                self._log(msg, subtestId=i)
-                numpy.testing.assert_almost_equal(result, expected, self.precison, msg)
-
-        self.imgs = None
-        self.expected = None
-        self.params = None
-        self.precison = None
-        return
-
-    def _log(self, msg: str, subtestId: int = 0):
-        out = ""
-        if subtestId == 0:
-            out += f"{'='*99}\n[{self.id()}]\n"
-        out += f"↳ {subtestId} - {msg}\n"
-        print(out)
+from OCIOexperiments import testing
 
 
 class TestOpenDomainToNormalizedLog2(unittest.TestCase):
     pass
 
 
-class TestSaturate(BaseTransformtest, unittest.TestCase):
+class TestSaturate(testing.BaseTransformtest, unittest.TestCase):
     """
     Reference Nuke scene :
 
@@ -151,7 +88,7 @@ class TestSaturate(BaseTransformtest, unittest.TestCase):
     def test_0x5(self):
 
         self.params = {"saturation": 0.5}
-        self.expected = (
+        self.expected = testing.DataArrayStack(
             (0.34252, 0.14252, 0.14252),
             (1.00591, 1.43591, 1.39891),
             (-0.30181, 0.10569, 0.76119),
@@ -160,14 +97,14 @@ class TestSaturate(BaseTransformtest, unittest.TestCase):
     def test_2x0(self):
 
         self.params = {"saturation": 2.0}
-        self.expected = (
+        self.expected = testing.DataArrayStack(
             (0.81496, 0.01496, 0.01496),
             (-0.00182, 1.71818, 1.57018),
             (-1.40639, 0.22362, 2.84561),
         )
 
 
-class TestContrastLinear(BaseTransformtest, unittest.TestCase):
+class TestContrastLinear(testing.BaseTransformtest, unittest.TestCase):
 
     method = [ocex.transforms.contrast_linear]
 
@@ -180,10 +117,59 @@ class TestContrastLinear(BaseTransformtest, unittest.TestCase):
     def test_0x5_0x18(self):
 
         self.params = {"contrast": 0.5, "pivot": 0.18}
-        self.expected = (
+        self.expected = testing.DataArrayStack(
             (0.31931, 0.14280, 0.14280),
             (0.36963, 0.55857, 0.54489),
             (-0.36963, 0.17195, 0.54489),
+        )
+
+
+class TestOffset(testing.BaseTransformtest, unittest.TestCase):
+
+    method = [ocex.transforms.offset]
+
+    def setUp(self):
+        super().setUp()
+
+    def tearDown(self):
+        super().tearDown()
+
+    def test_0x5(self):
+        offset = 0.5
+        self.params = {"o": offset}
+        self.expected = testing.DataArrayStack(
+            (0.5 + offset, 0.1 + offset, 0.1 + offset),
+            (0.67 + offset, 1.53 + offset, 1.456 + offset),
+            (-0.67 + offset, 0.145 + offset, 1.456 + offset),
+        )
+
+    def test_n0x13(self):
+        offset = -0.13
+        self.params = {"o": offset}
+        self.expected = testing.DataArrayStack(
+            (0.5 + offset, 0.1 + offset, 0.1 + offset),
+            (0.67 + offset, 1.53 + offset, 1.456 + offset),
+            (-0.67 + offset, 0.145 + offset, 1.456 + offset),
+        )
+
+
+class TestClamp(testing.BaseTransformtest, unittest.TestCase):
+
+    method = [ocex.transforms.clamp]
+
+    def setUp(self):
+        super().setUp()
+
+    def tearDown(self):
+        super().tearDown()
+
+    def test_min0x36_max1x16(self):
+
+        self.params = {"min_out": 0.36, "max_out": 1.16}
+        self.expected = testing.DataArrayStack(
+            (0.5, 0.36, 0.36),
+            (0.67, 1.16, 1.16),
+            (0.36, 0.36, 1.16),
         )
 
 
