@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from typing import Literal, List, Union, Any, Tuple
 
+import colour.io
 import cv2
 import numpy
 import OpenImageIO as oiio
@@ -11,12 +12,33 @@ import PIL.Image
 from . import c
 
 __all__ = (
+    "img2str",
     "make_constant_image",
     "array_read",
     "array_write",
 )
 
 logger = logging.getLogger(f"{c.ABR}.io")
+
+
+def img2str(img: numpy.ndarray, single_pixel=True) -> str:
+    """
+    Pretty print a 2D image to a str.
+
+    Args:
+        img: 2D image as numpy array
+        single_pixel: if True only print the first pixel at x:0,y:0
+    """
+
+    if single_pixel:
+        img: numpy.ndarray = img[0][0]
+
+    with numpy.printoptions(
+        precision=3,
+        suppress=True,
+        formatter={"float": "{: 0.5f}".format},
+    ):
+        return f"{img}"
 
 
 def make_constant_image(
@@ -40,7 +62,7 @@ def make_constant_image(
 
 def array_read(
     input_path: Path,
-    method: Literal["oiio", "cv2", "pillow"],
+    method: Literal["oiio", "cv2", "pillow", "colour"],
     **kwargs,
 ) -> numpy.ndarray:
     """
@@ -69,14 +91,22 @@ def array_read(
 
     elif method == "pillow":
 
-        array: PIL.Image.Image = PIL.Image.open(input_path)
+        array: PIL.Image.Image = PIL.Image.open(input_path, **kwargs)
         array: numpy.ndarray = array.__array__(dtype=numpy.float32)
 
     elif method == "oiio":
 
-        array: oiio.ImageInput = oiio.ImageInput.open(str(input_path))
+        array: oiio.ImageInput = oiio.ImageInput.open(str(input_path), **kwargs)
         assert array, f"OIIO: ImageInput for {input_path} not created."
         array: numpy.ndarray = array.read_image(oiio.FLOAT)
+
+    elif method == "colour":
+
+        array: numpy.ndarray = colour.io.read_image(
+            str(input_path),
+            bit_depth="float32",
+            **kwargs,
+        )
 
     else:
         raise ValueError(f"Method <{method}> passed is not supported.")
