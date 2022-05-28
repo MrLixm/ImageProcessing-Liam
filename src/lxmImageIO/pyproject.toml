@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "lxmImageIO"
+version = "0.1.0"
+description = ""
+authors = ["Liam Collod <lcollod@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "3.9.*"
+Pillow = "9.1.0"
+numpy = "*"
+opencv-python = "4.5.5.*"
+openimageio = { path = "./vendor/OpenImageIO-2.2.18.0-cp39-cp39-win_amd64.whl" }
+
+[tool.poetry.dev-dependencies]
+black = "*"
+grip = "*"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
