@@ -29,7 +29,7 @@ class BaseTransformtest(ABC):
     ``setUp`` and ``tearDown`` must be re-implemented, but you can just call super()
     """
 
-    imgs: liio.containers.DataArrayStack = liio.containers.DataArrayStack(
+    imgs: liio.containers.DataArrayStack = liio.io.read.readToDataArrayStack(
         (0.5, 0.1, 0.1),
         (0.67, 1.53, 1.456),
         (-0.67, 0.145, 1.456),

@@ -5,6 +5,7 @@ import numpy.testing
 
 from lxmImageIO import testing
 from lxmImageIO import containers
+from lxmImageIO import io
 import OCIOexperiments as ocex
 from OCIOexperiments.grading import interactive
 
@@ -165,7 +166,7 @@ class TestGradingInteractiveData(testing.BaseTransformtest, unittest.TestCase):
         str(ocex.c.DATA_DIR / "configs" / "AgXc-v0.1.4" / "config.ocio")
     )
 
-    imgs: containers.DataArrayStack = containers.DataArrayStack(
+    imgs: containers.DataArrayStack = io.read.readToDataArrayStack(
         (0.5, 0.1, 0.1),
         (0.36, 1.4523, 0.7),
         ocex.c.DATA_DIR / "renders" / "dragonscene_ap0.half.1001.exr",

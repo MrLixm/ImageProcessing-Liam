@@ -7,6 +7,7 @@ import numpy.testing
 
 from lxmImageIO import testing
 from lxmImageIO import containers
+from lxmImageIO import io
 import OCIOexperiments as ocex
 from OCIOexperiments.grading import processes
 
@@ -97,7 +98,7 @@ class TestOcioOperationGraphAgx(testing.BaseTransformtest, unittest.TestCase):
         str(ocex.c.DATA_DIR / "configs" / "AgXc-v0.1.4" / "config.ocio")
     )
 
-    imgs: containers.DataArrayStack = containers.DataArrayStack(
+    imgs: containers.DataArrayStack = io.read.readToDataArrayStack(
         (0.5, 0.1, 0.1),
         (0.36, 1.4523, 0.7),
         ocex.c.DATA_DIR / "renders" / "dragonscene_ap0.half.1001.exr",
@@ -128,10 +129,10 @@ class TestOcioOperationGraphAgx(testing.BaseTransformtest, unittest.TestCase):
 
         self.params = {"oog": oog, "config": self.config}
         # all generated through nuke
-        self.expected = containers.DataArrayStack(
-            containers.DataArray((1.02972, 0.80339, 0.80359)),
-            containers.DataArray((0.85478, 1.00726, 0.85478)),
-            containers.DataArray(RENDER_TEST_1),
+        self.expected = io.read.readToDataArrayStack(
+            (1.02972, 0.80339, 0.80359),
+            (0.85478, 1.00726, 0.85478),
+            RENDER_TEST_1,
         )
         return
 
@@ -146,9 +147,9 @@ class TestOcioOperationGraphAgx(testing.BaseTransformtest, unittest.TestCase):
 
         self.params = {"oog": oog, "config": self.config}
         # all generated through nuke
-        self.expected = containers.DataArrayStack(
-            containers.DataArray((0.90552, 0.47522, 0.62818)),
-            containers.DataArray((0.68929, 0.94798, 0.8691)),
+        self.expected = io.read.readToDataArrayStack(
+            (0.90552, 0.47522, 0.62818),
+            (0.68929, 0.94798, 0.8691),
             None,  # we skip the render for this one
         )
         return

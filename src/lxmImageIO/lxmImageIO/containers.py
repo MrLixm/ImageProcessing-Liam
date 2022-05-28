@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import logging
 from pathlib import Path
-from typing import Callable, Union, Tuple, NewType, Optional
+from typing import Callable, Union, Tuple, NewType, Optional, List
 
 import numpy
 import numpy.testing
@@ -57,15 +57,7 @@ class ImageContainer:
 
 
 class DataArray:
-    # HACK: pre-declared for the under type hint
-    pass
-
-
-DataType = NewType("DataType", Union[Path, str, Tuple[float, float, float], DataArray])
-
-
-class DataArray:
-    def __init__(self, data: DataType):
+    def __init__(self, array: numpy.ndarray):
         """
         Low-level entity representing an arbitrary data as a numpy array.
         (even if for now these are images).
@@ -74,30 +66,11 @@ class DataArray:
         internally to an array.
 
         Args:
-            data: source to build the array from
+            array:
         """
 
         self._data: numpy.ndarray = None
-
-        if isinstance(data, (Path, str)):
-
-            self.array = liio.io.read.array_read(Path(data), method="colour")
-
-        elif isinstance(data, tuple) and len(data) == 3:
-
-            self.array = liio.io.create.make_constant_image(data)
-
-        elif isinstance(data, numpy.ndarray):
-
-            self.array = data
-
-        elif isinstance(data, DataArray):
-
-            self.array = data.array
-
-        else:
-            raise TypeError(f"Unsupported data type {type(data)} passed.")
-
+        self.array = array
         return
 
     @property
@@ -117,16 +90,21 @@ class DataArray:
 
 
 class DataArrayStack(list):
-    def __init__(self, *args: DataType):
+    def __init__(self, *args: Union[DataArray, numpy.ndarray, Optional]):
         """
-        A groups of DataArray.
+        A groups of DataArray as a list.
         Used to batch-apply a similar process to them.
 
+        Some objects holded can be None.
+
         Args:
-            *args: type supported are defined by DataArray
+            *args: Union[DataArray, None] or Union[numpy.ndarray, None]
         """
-        out = [DataArray(arg) if arg is not None else None for arg in args]
-        super().__init__(out)
+        if all(isinstance(arg, DataArray) or arg is None for arg in args):
+            super().__init__(args)
+        else:
+            out = [DataArray(arg) if arg is not None else None for arg in args]
+            super().__init__(out)
         return
 
     def apply_op(
@@ -151,7 +129,8 @@ class DataArrayStack(list):
             a new version of the DataArrayStack with the op applied
         """
 
-        out = list()
+        out: List[numpy.ndarray] = list()
+        data: DataArray
         for data in self.__iter__():
             out.append(op(data.array, *args, **kwargs))
 
