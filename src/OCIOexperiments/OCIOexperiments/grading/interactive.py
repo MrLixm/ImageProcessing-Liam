@@ -5,10 +5,9 @@ import logging
 from dataclasses import dataclass
 from typing import (
     Optional,
-    Union,
     Dict,
     ClassVar,
-    Tuple,
+    List,
 )
 
 import PyOpenColorIO as ocio
@@ -20,36 +19,36 @@ from . import c
 __all__ = ("GradingInteractive",)
 
 
-logger = logging.getLogger(f"{c.ABR}.ocioUtils")
-
-
-# TODO :
-"""
-- refactor how this should behave depending of the grading mode
-    - delete lift ? only expose common ? create on class per mode ?
-- also trigger saturation when only exposure/gamma
-"""
+logger = logging.getLogger(f"{c.ABR}.interactive")
 
 
 @dataclass
 class GradingInteractive:
     """
-    List of common grading transform to apply in an interactive context to an image.
+    Common grading transforms to apply in an interactive context to an image.
+    This doesn't apply any processing but just store values to apply.
 
-    Call ``repr()`` to get a dict representation.
 
-    You can connect the ``sgn_dynamicprops`` that will be emitted when any value
-    associated to an OCIO dynamic property is modified.
+    In terms of public objects :
+
+    -
+        Call ``repr()`` to get a dict representation of the grading values.
+
+    -
+        You can connect the ``sgn_dynamicprops`` that will be emitted when any value
+        associated to an OCIO dynamic property is modified.
+
+    -
+        the ``transforms`` property is the final target
+
+    -
+        ``update_all_shader_dyn_prop`` can be used in a GPU context for OCIO to update
+        the shader dynamic properties.
     """
 
     exposure: float = 0.0
     gamma: float = 1.0
-
     # GradingPrimary
-    contrast: Union[float, Tuple[float, float, float]] = 1.0
-    lift: Union[float, Tuple[float, float, float]] = 0.0
-    offset: Union[float, Tuple[float, float, float]] = 0.0
-    pivot: float = 0.18
     saturation: float = 1.0
 
     grading_space = ocio.GRADING_LIN
@@ -70,12 +69,7 @@ class GradingInteractive:
     _propconfig: ClassVar[Dict[str, ocio.DynamicPropertyType]] = {
         "exposure": (exposure, ocio.DYNAMIC_PROPERTY_EXPOSURE),
         "gamma": (gamma, ocio.DYNAMIC_PROPERTY_GAMMA),
-        "contrast": (contrast, ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY),
-        "pivot": (pivot, ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY),
-        "lift": (lift, ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY),
-        "offset": (offset, ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY),
         "saturation": (saturation, ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY),
-        "grading_space": (grading_space, ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY),
     }
     """
     | Dict of {*class attribute name*: *config tuple*, ...}.
@@ -93,9 +87,6 @@ class GradingInteractive:
         return {
             "exposure": self.exposure,
             "gamma": self.gamma,
-            "grading_space": str(self.grading_space),
-            "contrast": self.contrast,
-            "pivot": self.pivot,
             "saturation": self.saturation,
         }
 
@@ -103,6 +94,10 @@ class GradingInteractive:
         return str(self.__repr__())
 
     def __setattr__(self, key, value):
+        """
+        Change one of the class attribute. If this attribute corresponds to a
+        dynamic property, this one will be emitted in the ``sgn_dynamicprops`` signal.
+        """
 
         # emit which dynamic properties changed to update the OCIO processor upstream
         dp: Optional[tuple] = self._propconfig.get(key)
@@ -126,45 +121,33 @@ class GradingInteractive:
         # HACK saturation
         return (
             self._is_default_except_sat
-            and self.saturation == self.get_default("saturation")
-            and self.grading_space == self.get_default("grading_space")
+            and self.saturation == self.get_default("saturation"),
         )
 
     @property
     def is_modified_sat_only(self):
         # HACK saturation :
         # https://github.com/AcademySoftwareFoundation/OpenColorIO/issues/1642
-        return self._is_default_except_sat and self.saturation != self.get_default(
-            "saturation"
+        return (
+            self._is_default_except_sat
+            and self.saturation != self.get_default("saturation"),
         )
 
     @property
     def _is_default_except_sat(self):
         # HACK saturation :
-        return (
-            self.exposure == self.get_default("exposure")
-            and self.contrast == self.get_default("contrast")
-            and self.gamma == self.get_default("gamma")
-            and self.pivot == self.get_default("pivot")
-            and self.lift == self.get_default("lift")
-            and self.offset == self.get_default("offset")
-        )
+        return self.exposure == self.get_default(
+            "exposure"
+        ) and self.gamma == self.get_default("gamma")
 
     @property
-    def grading_primary(self) -> ocio.GradingPrimary:
+    def _grading_primary(self) -> ocio.GradingPrimary:
+        """
+        Convert the grading operations that in terms of OCIO API corresponds
+        the GradingPrimary class.
+        """
 
         gp = ocio.GradingPrimary(self.grading_space)
-
-        # HACK: https://github.com/AcademySoftwareFoundation/OpenColorIO/issues/1643
-        if isinstance(self.contrast, tuple):
-            contrast = tuple(map(lambda f: f * 0.999999, self.contrast))
-        else:
-            contrast = self.contrast
-
-        gp.contrast = ocex.wrappers.to_rgbm(contrast, "*")
-        gp.lift = ocex.wrappers.to_rgbm(self.lift)
-        gp.offset = ocex.wrappers.to_rgbm(self.offset, "+")
-        gp.pivot = self.pivot
         gp.saturation = self.saturation
 
         # HACK saturation :
@@ -173,6 +156,41 @@ class GradingInteractive:
             gp.clampBlack = -150
 
         return gp
+
+    @property
+    def transforms(self) -> List[ocio.Transform]:
+        """
+        Convert this class to OCIO API by returning a corresponding list of OCIO
+        transforms to apply.
+
+        Returns:
+            list of OCIO transform to apply in the same order.
+        """
+
+        trsfm_list = list()
+
+        trsfm = ocio.GradingPrimaryTransform(
+            self._grading_primary,
+            self.grading_space,
+            True,
+        )
+        trsfm_list.append(trsfm)
+
+        trsfm = ocio.ExposureContrastTransform(
+            exposure=self.exposure,
+            dynamicExposure=True,
+        )
+        trsfm_list.append(trsfm)
+
+        # TODO check pivot
+        trsfm = ocio.ExposureContrastTransform(
+            gamma=self.gamma,
+            pivot=0.18,
+            dynamicGamma=True,
+        )
+        trsfm_list.append(trsfm)
+
+        return trsfm_list
 
     def update_all_shader_dyn_prop(self, shader: ocio.GpuShaderDesc):
 

@@ -22,11 +22,13 @@ logger = logging.getLogger(f"{c.ABR}.processes")
 class OcioOperationGraph:
     """
     Describe color operations to perform on an image that has just been decoded from disk.
-    The whole pipeline is described: ``input-> working space -> grading -> display``.
+    The whole pipeline is described as:
 
-    The workspace colorspace is assumed to be the role SCENE_LINEAR by default but can
-    be changed. It can be "log-flavored" so you could for example set
-    <GradingInteractive> grading_space to <ocio.GRADING_LOG>
+    ``input-> working space -> grading -> display``
+
+    The workspace colorspace is assumed to be the role ``SCENE_LINEAR`` by default but
+    can be changed. If "log-flavored" you could for example set
+    <GradingInteractive> grading_space to <ocio.GRADING_LOG> to adapat grading operation
     """
 
     def __init__(self, config: Union[Path, ocio.Config]):
@@ -41,8 +43,9 @@ class OcioOperationGraph:
 
         self.input_encoding: str = None
         """
-        Also called IDT. 
-        Conversion to perform to convert the input image to the workspace colorspace.
+        Also called IDT.
+        Specify the colorspace in which the input is encoded to be converted to 
+        the workspace colorspace.
         """
 
         self.workspace_colorspace: str = ocio.ROLE_SCENE_LINEAR
