@@ -5,6 +5,8 @@ import numpy
 
 import PyOpenColorIO as ocio
 
+from OCIOexperiments import grading
+
 __all__ = ("convert_gpu",)
 
 
@@ -13,7 +15,7 @@ def convert_gpu(
     config: ocio.Config,
     source: str,
     target: str,
-    look: ocioUtils.GradingInteractive,
+    look: grading.GradingInteractive,
 ) -> numpy.ndarray:
     """
 

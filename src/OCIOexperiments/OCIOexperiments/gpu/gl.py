@@ -10,6 +10,7 @@ from typing import Union, ClassVar
 import numpy
 from OpenGL import GL
 import PyOpenColorIO as ocio
+import lxmImageIO as liio
 
 from . import c
 from . import main
@@ -123,14 +124,14 @@ class GLImage:
     """
 
     # noinspection PyTypeChecker
-    def __init__(self, ocio_operation: grading.processes.InToDisplayGradedGraph):
+    def __init__(self, ocio_operation: grading.processes.BaseOpGraph):
 
-        self.ocioops: grading.processes.InToDisplayGradedGraph = ocio_operation
+        self.ocioops: grading.processes.BaseOpGraph = ocio_operation
         """
-        OCIO operations to apply on the image. Modified in live by the user.
+        OCIO operations to apply on the image. Can be modified live by the user.
         """
 
-        self.image: main.ImageContainer = None
+        self.image: liio.containers.ImageContainer = None
         """
         Whole 32bit float Image.
         """
@@ -236,6 +237,9 @@ class GLImage:
         logger.debug(f"[{self.__class__.__name__}][paintGL] Finished.")
         return
 
+    def as_array(self) -> numpy.ndarray:
+        return GL.glGetTexImage(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, GL.GL_FLOAT)
+
     def build_program(self, force: bool = False):
         """
         Args:
@@ -308,7 +312,7 @@ class GLImage:
         logger.debug(f"[{self.__class__.__name__}][build_program] Finished.")
         return
 
-    def load(self, image: main.ImageContainer):
+    def load(self, image: liio.containers.ImageContainer):
         """
         Args:
             image: expecting a 32bit float image encoded as R-G-B(-A)
