@@ -1,17 +1,11 @@
 import unittest
-from functools import partial
-from pathlib import Path
-from typing import Tuple
-
 import PyOpenColorIO as ocio
-import colour.io
 import numpy
 import numpy.testing
 
 import OCIOexperiments as ocex
 from OCIOexperiments import testing
-from OCIOexperiments.gpu import ocioUtils
-from OCIOexperiments.io import img2str
+from OCIOexperiments.grading import interactive
 
 
 REMOVE_WRITES = True
@@ -19,12 +13,12 @@ REMOVE_WRITES = True
 
 def apply_gi_on_img(
     img: numpy.ndarray,
-    gi: ocioUtils.GradingInteractive,
+    gi: interactive.GradingInteractive,
     config: ocio.Config,
 ) -> numpy.ndarray:
 
     tsfm_gp = ocio.GradingPrimaryTransform(
-        gi.grading_primary,
+        gi._grading_primary,
         gi.grading_space,
         True,
     )
@@ -50,45 +44,18 @@ class TestGradingInteractive(unittest.TestCase):
 
     def test_grading_primary(self):
 
-        gi = ocioUtils.GradingInteractive()
+        gi = interactive.GradingInteractive()
 
-        gi.contrast = 0.666
-        gi.lift = 0.666
-        gi.offset = 0.666
-        gi.pivot = 0.666
         gi.saturation = 0.666
 
-        gp = gi.grading_primary
-        self.assertTrue(
-            self.rgbm_equal_rgbm(gp.contrast, self.to_rgbm(0.666, "*")),
-            f"{gp.contrast}",
-        )
-        self.assertTrue(self.rgbm_equal_rgbm(gp.lift, self.to_rgbm(0.666, "*")))
-        self.assertTrue(self.rgbm_equal_rgbm(gp.offset, self.to_rgbm(0.666, "+")))
-        self.assertFalse(self.rgbm_equal_rgbm(gp.offset, self.to_rgbm(1.8, "+")))
-        self.assertEqual(gp.pivot, 0.666)
+        gp = gi._grading_primary
         self.assertEqual(gp.saturation, 0.666)
-
-        gi.contrast = (0.1, 1, 0.1, 1)
-        self.assertFalse(
-            self.rgbm_almostequal_rgbm(
-                gp.contrast, self.to_rgbm((0.1, 1, 0.1, 1), "*")
-            ),
-            f"gp.contrast = {gp.contrast}",
-        )
-        gp = gi.grading_primary
-        self.assertTrue(
-            self.rgbm_almostequal_rgbm(
-                gp.contrast, self.to_rgbm((0.1, 1, 0.1, 1), "*")
-            ),
-            f"gp.contrast = {gp.contrast}",
-        )
 
         return
 
     def test_properties(self):
 
-        gi = ocioUtils.GradingInteractive()
+        gi = interactive.GradingInteractive()
 
         self.assertTrue(gi.is_default)
 
@@ -97,7 +64,7 @@ class TestGradingInteractive(unittest.TestCase):
         self.assertFalse(gi.is_default)
         self.assertFalse(gi.is_modified_sat_only)
 
-        gi = ocioUtils.GradingInteractive()
+        gi = interactive.GradingInteractive()
 
         gi.saturation = 0.1
 
@@ -108,7 +75,7 @@ class TestGradingInteractive(unittest.TestCase):
 
     def test__propconfig(self):
 
-        gi = ocioUtils.GradingInteractive()
+        gi = interactive.GradingInteractive()
 
         self.assertTrue(gi._propconfig.get("exposure")[0] == 0.0)
 
@@ -150,7 +117,7 @@ class TestGradingInteractive(unittest.TestCase):
 
 class TestGradingInteractiveSignals(unittest.TestCase):
     def setUp(self):
-        self.gi = ocioUtils.GradingInteractive()
+        self.gi = interactive.GradingInteractive()
         self.dynamicprop = None
         self.dynamicprop_value = None
         return
@@ -213,7 +180,7 @@ class TestGradingInteractiveData(testing.BaseTransformtest, unittest.TestCase):
 
     def test_expoNsaturate(self):
 
-        gi = ocioUtils.GradingInteractive()
+        gi = interactive.GradingInteractive()
         gi.exposure = -0.5
         gi.saturation = 2.0
 
@@ -225,7 +192,7 @@ class TestGradingInteractiveData(testing.BaseTransformtest, unittest.TestCase):
 
     def test_saturate_2x0(self):
 
-        gi = ocioUtils.GradingInteractive()
+        gi = interactive.GradingInteractive()
         gi.saturation = 2.0
 
         self.params = {"gi": gi, "config": self.config}
@@ -235,123 +202,13 @@ class TestGradingInteractiveData(testing.BaseTransformtest, unittest.TestCase):
 
     def test_saturate_2x0_log(self):
 
-        gi = ocioUtils.GradingInteractive()
+        gi = interactive.GradingInteractive()
         gi.saturation = 2.0
         gi.grading_space = ocio.GRADING_LOG
 
         self.params = {"gi": gi, "config": self.config}
         self.expected = self.imgs.apply_op(ocex.transforms.saturate, 2.0)
 
-        return
-
-
-class TestOcioOperationGraph(unittest.TestCase):
-    def test_init(self):
-        # Must not raise anything
-
-        config_path = ocex.c.DATA_DIR / "configs" / "AgXc-v0.1.4" / "config.ocio"
-        oog = ocioUtils.OcioOperationGraph(config=config_path)
-
-        config = ocio.Config().CreateFromFile(str(config_path))
-        oog = ocioUtils.OcioOperationGraph(config=config_path)
-
-        self.assertRaises(Exception, partial(ocioUtils.OcioOperationGraph, "C:"))
-
-        return
-
-
-class TestOcioOperationGraphAgx(unittest.TestCase):
-
-    config_path = ocex.c.DATA_DIR / "configs" / "AgXc-v0.1.4" / "config.ocio"
-
-    def setUp(self):
-        self.oog = ocioUtils.OcioOperationGraph(config=self.config_path)
-        img = ocex.c.DATA_DIR / "renders" / "dragonscene_ap0.half.1001.exr"
-        self.img_render = colour.io.read_image(str(img))
-        return
-
-    def tearDown(self):
-        self.oog = None
-        self.img_render = None
-        return
-
-    def _apply_proc_n_write(self):
-
-        proc = self.oog.get_proc()
-        proc: ocio.CPUProcessor = proc.getDefaultCPUProcessor()
-
-        proc.applyRGB(self.img_render)
-
-        out_path = Path(__file__).parent / "_outputs" / f"dragonscene.{self.id()}.jpg"
-        colour.io.write_image(self.img_render, str(out_path))
-        self.assertTrue(out_path.exists())
-
-        if REMOVE_WRITES:
-            out_path.unlink()
-
-        return
-
-    def test_proc1(self):
-
-        self.assertRaises(AssertionError, self.oog.get_proc)
-
-        self.oog.input_encoding = "sRGB"
-        self.oog.target_display = "sRGB"
-        # self.oog.target_view = "AgX"
-
-        self.assertRaises(AssertionError, self.oog.get_proc)
-
-        return
-
-    def test_proc2(self):
-
-        self.oog.input_encoding = "sRGB"
-        self.oog.target_display = "sRGB"
-        self.oog.target_view = "BABABOEI"
-
-        self.assertRaises(AssertionError, self.oog.get_proc)
-
-        return
-
-    def test_proc3(self):
-
-        self.oog.input_encoding = "Linear sRGB"
-        self.oog.target_display = "sRGB"
-        self.oog.target_view = "AgX"
-        self.oog.target_looks = "Punchy"
-
-        self.oog.grading.exposure = 0.5
-        self.oog.grading.saturation = 1.2
-
-        self.oog.get_proc()
-
-        return
-
-    def test_write(self):
-
-        self.oog.input_encoding = "ACES2065-1"
-        self.oog.target_display = "sRGB"
-        self.oog.target_view = "AgX Punchy"
-        # self.oog.target_looks = "Punchy"
-
-        # self.oog.grading.exposure = 1.5
-        # self.oog.grading.saturation = 15
-        self.oog.grading.contrast = (0.1, 1.0, 1.0)
-        # TODO contrast looks broken, find workaround
-
-        self._apply_proc_n_write()
-        return
-
-    def test_write_2(self):
-
-        self.oog.input_encoding = "ACES2065-1"
-        self.oog.target_display = "sRGB"
-        self.oog.target_view = "AgX"
-        # self.oog.target_looks = "OverExposed"
-
-        self.oog.grading.offset = 0.3
-
-        self._apply_proc_n_write()
         return
 
 
