@@ -20,10 +20,14 @@ DataType = NewType("DataType", Union[Path, str, Tuple[float, float, float]])
 class DataArray:
     def __init__(self, data: DataType):
         """
-        Low-level entity representing an arbitrary data (even if for now these are images).
+        Low-level entity representing an arbitrary data as a numpy array.
+        (even if for now these are images).
+
+        Data argument can be different type that will be automatically converted
+        internally to an array.
 
         Args:
-            data:
+            data: source to build the array from
         """
 
         self._data: numpy.ndarray = None
@@ -57,7 +61,7 @@ class DataArray:
 class DataArrayStack(list):
     def __init__(self, *args: DataType):
         """
-        A groups of DataArray.
+        A groups of DataArray to batch-apply similar process.
 
         Args:
             *args: type supported are defined by DataArray
@@ -77,7 +81,7 @@ class DataArrayStack(list):
         Args:
             op: function to call on each array holded
             *args: args to pass to the op
-            **kwargs: kwrgas to pass to the op
+            **kwargs: kwargs to pass to the op
 
         Returns:
             a new version of the DataArrayStack with the op applied
@@ -91,6 +95,15 @@ class DataArrayStack(list):
 
 
 class BaseTransformtest(ABC):
+    """
+    Apply color processes on a bunch of RGB images holded in imgs.
+    Define one time the process to apply and test it automatically on different array
+    image.
+
+    Must be subclassed with unittest.case.
+
+    setUp and tearDown must be re-implemented, but you can just call super()
+    """
 
     imgs: DataArrayStack = DataArrayStack(
         (0.5, 0.1, 0.1),
