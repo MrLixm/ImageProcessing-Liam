@@ -81,11 +81,11 @@ class DataArray:
 
         if isinstance(data, (Path, str)):
 
-            self.array = liio.io.array_read(Path(data), method="colour")
+            self.array = liio.io.read.array_read(Path(data), method="colour")
 
         elif isinstance(data, tuple) and len(data) == 3:
 
-            self.array = liio.io.make_constant_image(data)
+            self.array = liio.io.create.make_constant_image(data)
 
         elif isinstance(data, numpy.ndarray):
 
