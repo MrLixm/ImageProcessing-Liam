@@ -70,6 +70,7 @@ class GradingInteractive:
         "exposure": (exposure, ocio.DYNAMIC_PROPERTY_EXPOSURE),
         "gamma": (gamma, ocio.DYNAMIC_PROPERTY_GAMMA),
         "saturation": (saturation, ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY),
+        "grading_space": (grading_space, ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY),
     }
     """
     | Dict of {*class attribute name*: *config tuple*, ...}.
@@ -119,18 +120,16 @@ class GradingInteractive:
     @property
     def is_default(self):
         # HACK saturation
-        return (
-            self._is_default_except_sat
-            and self.saturation == self.get_default("saturation"),
+        return self._is_default_except_sat and self.saturation == self.get_default(
+            "saturation"
         )
 
     @property
     def is_modified_sat_only(self):
         # HACK saturation :
         # https://github.com/AcademySoftwareFoundation/OpenColorIO/issues/1642
-        return (
-            self._is_default_except_sat
-            and self.saturation != self.get_default("saturation"),
+        return self._is_default_except_sat and self.saturation != self.get_default(
+            "saturation"
         )
 
     @property
@@ -152,16 +151,18 @@ class GradingInteractive:
 
         # HACK saturation :
         # https://github.com/AcademySoftwareFoundation/OpenColorIO/issues/1642
-        if self.is_modified_sat_only:
+        if self.saturation != self.get_default("saturation"):
             gp.clampBlack = -150
 
         return gp
 
-    @property
-    def transforms(self) -> List[ocio.Transform]:
+    def as_transforms(self, dynamic: bool = True) -> List[ocio.Transform]:
         """
         Convert this class to OCIO API by returning a corresponding list of OCIO
         transforms to apply.
+
+        Args:
+            dynamic: are transforms properties dynamic
 
         Returns:
             list of OCIO transform to apply in the same order.
@@ -172,13 +173,13 @@ class GradingInteractive:
         trsfm = ocio.GradingPrimaryTransform(
             self._grading_primary,
             self.grading_space,
-            True,
+            dynamic,
         )
         trsfm_list.append(trsfm)
 
         trsfm = ocio.ExposureContrastTransform(
             exposure=self.exposure,
-            dynamicExposure=True,
+            dynamicExposure=dynamic,
         )
         trsfm_list.append(trsfm)
 
@@ -186,7 +187,7 @@ class GradingInteractive:
         trsfm = ocio.ExposureContrastTransform(
             gamma=self.gamma,
             pivot=0.18,
-            dynamicGamma=True,
+            dynamicGamma=dynamic,
         )
         trsfm_list.append(trsfm)
 

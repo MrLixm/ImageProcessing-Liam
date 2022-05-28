@@ -86,12 +86,7 @@ class OcioOperationGraph:
 
         Grading:
             ignored ? (=default): {self.grading.is_default}
-            GradingPrimaryTransform:
-                gp: {self.grading.grading_primary}
-                space: {self.grading.grading_space}
-            ExposureContrastTransform:
-                exposure: {self.grading.exposure}
-                gamma: {self.grading.gamma}
+            {self.grading}
 
         Looks:
             {self.target_looks}
@@ -115,28 +110,11 @@ class OcioOperationGraph:
         )
         grptransform.appendTransform(trsfm)
 
-        # TODO check if necessary as OCIO might already applied optimisation in the proc
+        # TODO check if "IF" necessary as OCIO might already applied optimisation in the proc
         if not self.grading.is_default:
-            trsfm = ocio.GradingPrimaryTransform(
-                self.grading.grading_primary,
-                self.grading.grading_space,
-                True,
-            )
-            grptransform.appendTransform(trsfm)
 
-            trsfm = ocio.ExposureContrastTransform(
-                exposure=self.grading.exposure,
-                dynamicExposure=True,
-            )
-            grptransform.appendTransform(trsfm)
-
-            # TODO check pivot
-            trsfm = ocio.ExposureContrastTransform(
-                gamma=self.grading.gamma,
-                pivot=0.18,
-                dynamicGamma=True,
-            )
-            grptransform.appendTransform(trsfm)
+            for trsfm in self.grading.as_transforms():
+                grptransform.appendTransform(trsfm)
 
         if self.target_looks:
             trsfm = ocio.LookTransform()
