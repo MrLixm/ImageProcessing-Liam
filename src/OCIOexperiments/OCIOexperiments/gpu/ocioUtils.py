@@ -56,6 +56,14 @@ def update_shader_dyn_prop(
         return dyn_prop
 
 
+# TODO :
+"""
+- refactor how this should behave depending of the grading mode
+    - delete lift ? only expose common ? create on class per mode ?
+- also trigger saturation when only exposure/gamma
+"""
+
+
 @dataclass
 class GradingInteractive:
     """
@@ -83,7 +91,7 @@ class GradingInteractive:
     performed. This will not affect *exposure* and *gamma* adjustements.
 
     For now the input image has to be encoded in the same format (so log transfer-function
-     if GRADING_LOG).
+    if ``GRADING_LOG``).
 
     Can be one of :
 
@@ -186,9 +194,9 @@ class GradingInteractive:
         else:
             contrast = self.contrast
 
-        gp.contrast = ocex.wrappers.to_rgbm(contrast)
+        gp.contrast = ocex.wrappers.to_rgbm(contrast, "*")
         gp.lift = ocex.wrappers.to_rgbm(self.lift)
-        gp.offset = ocex.wrappers.to_rgbm(self.offset)
+        gp.offset = ocex.wrappers.to_rgbm(self.offset, "+")
         gp.pivot = self.pivot
         gp.saturation = self.saturation
 
@@ -258,6 +266,37 @@ class OcioOperationGraph:
         specification. (And forward is assumed in the absence of either).
         """
 
+    def __str__(self) -> str:
+        """
+        Returns:
+            a string representing the order of operation and their value used.
+            Useful for debugging.
+        """
+
+        return f"""
+        
+        ColorSpaceTransform:
+            from: {self.input_encoding}
+            to: {self.workspace_colorspace}
+        
+        Grading:
+            ignored ? (=default): {self.grading.is_default}
+            GradingPrimaryTransform:
+                gp: {self.grading.grading_primary}
+                space: {self.grading.grading_space}
+            ExposureContrastTransform:
+                exposure: {self.grading.exposure}
+                gamma: {self.grading.gamma}
+        
+        Looks:
+            {self.target_looks}
+        
+        DisplayViewTransform;
+            src: {self.workspace_colorspace},
+            display: {self.target_display},
+            view: {self.target_view},
+        """
+
     def get_proc(self) -> ocio.Processor:
 
         self.validate()
@@ -287,6 +326,7 @@ class OcioOperationGraph:
             )
             grptransform.appendTransform(trsfm)
 
+            # TODO check pivot
             trsfm = ocio.ExposureContrastTransform(
                 gamma=self.grading.gamma,
                 pivot=0.18,
