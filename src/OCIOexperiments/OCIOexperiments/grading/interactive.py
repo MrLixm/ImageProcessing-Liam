@@ -14,8 +14,8 @@ from typing import (
 import PyOpenColorIO as ocio
 
 import OCIOexperiments as ocex
+from OCIOexperiments.vendor.PySignal import Signal
 from . import c
-from .PySignal import Signal
 
 __all__ = ("GradingInteractive",)
 
