@@ -10,12 +10,12 @@ import PIL.Image
 
 from . import c
 
-__all__ = ("array_write",)
+__all__ = ("writeToArray",)
 
-logger = logging.getLogger(f"{c.ABR}.io")
+logger = logging.getLogger(f"{c.ABR}.write")
 
 
-def array_write(
+def writeToArray(
     array: numpy.ndarray,
     export_path: Path,
     bitdepth: Union[numpy.float32, numpy.uint16, numpy.uint8],

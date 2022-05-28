@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Literal
+from typing import Union, Tuple, NewType, Literal
 
 import colour.io
 import cv2
@@ -10,13 +10,18 @@ import PIL
 import PIL.Image
 
 from . import c
+import lxmImageIO as liio
 
-__all__ = ("array_read",)
+__all__ = (
+    "readToArray",
+    "readToImage",
+    "readToDataArray",
+)
 
-logger = logging.getLogger(f"{c.ABR}.io")
+logger = logging.getLogger(f"{c.ABR}.read")
 
 
-def array_read(
+def readToArray(
     input_path: Path,
     method: Literal["oiio", "cv2", "pillow", "colour"],
     **kwargs,
@@ -71,3 +76,65 @@ def array_read(
         f"[array_read] Array {array.shape}|{array.dtype} found in <{input_path}>."
     )
     return array
+
+
+def readToImage(input_path: Path, colorspace=None) -> liio.containers.ImageContainer:
+
+    imgin: oiio.ImageInput = oiio.ImageInput.open(str(input_path))
+    assert imgin, f"[readToImage] OIIO: ImageInput for {input_path} not created."
+    array: numpy.ndarray = imgin.read_image(oiio.FLOAT)
+    imgspec: oiio.ImageSpec = imgin.spec()
+
+    img = liio.containers.ImageContainer(
+        array=array,
+        width=imgspec.full_width,
+        height=imgspec.full_height,
+        channels=imgspec.nchannels,
+        # TODO better colorspace handling with ocio.ColorSpace
+        colorspace=colorspace,
+        path=input_path,
+    )
+    return img
+
+
+DataArrayTypes = NewType(
+    "DataArrayTypes",
+    Union[Path, str, Tuple[float, float, float], liio.containers.DataArray],
+)
+
+
+def readToDataArray(data: DataArrayTypes) -> liio.containers.DataArray:
+    """
+    Convert different type of objects representing an array to a DataArray instance.
+    """
+
+    if isinstance(data, (Path, str)):
+
+        array = readToArray(Path(data), method="oiio")
+
+    elif isinstance(data, tuple) and len(data) == 3:
+
+        array = liio.io.create.createConstantImage(data)
+
+    elif isinstance(data, numpy.ndarray):
+
+        array = data
+
+    elif isinstance(data, liio.containers.DataArray):
+
+        return data
+
+    else:
+        raise TypeError(f"Unsupported data type {type(data)} passed.")
+
+    return liio.containers.DataArray(array=array)
+
+
+def readToDataArrayStack(*args: DataArrayTypes) -> liio.containers.DataArrayStack:
+    """
+    Convert different type of objects (that can become a DataArray) to a DataArray stack
+    """
+    out = list()
+    for arg in args:
+        out.append(readToDataArray(arg))
+    return liio.containers.DataArrayStack(*out)

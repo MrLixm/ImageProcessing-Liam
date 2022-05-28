@@ -5,12 +5,12 @@ import numpy
 
 from . import c
 
-__all__ = ("make_constant_image",)
+__all__ = ("createConstantImage",)
 
-logger = logging.getLogger(f"{c.ABR}.io")
+logger = logging.getLogger(f"{c.ABR}.create")
 
 
-def make_constant_image(
+def createConstantImage(
     color: Tuple[float, float, float],
     size: Tuple[int, int] = (4, 4),
 ) -> numpy.ndarray:
