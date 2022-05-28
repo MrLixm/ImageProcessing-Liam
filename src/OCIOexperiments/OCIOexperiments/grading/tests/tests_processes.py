@@ -4,12 +4,16 @@ from pathlib import Path
 
 import PyOpenColorIO as ocio
 import colour.io
+import numpy.testing
 
 import OCIOexperiments as ocex
+from OCIOexperiments import testing
 from OCIOexperiments.grading import processes
 
 
 REMOVE_WRITES = True
+
+RENDER_TEST_1 = Path("./data/test.oog_agx.test_1.ref.tif")
 
 
 class TestOcioOperationGraph(unittest.TestCase):
@@ -27,98 +31,126 @@ class TestOcioOperationGraph(unittest.TestCase):
         return
 
 
-class TestOcioOperationGraphAgx(unittest.TestCase):
+def apply_proc(
+    img: numpy.ndarray, oog: processes.OcioOperationGraph, config: ocio.Config
+):
 
-    config_path = ocex.c.DATA_DIR / "configs" / "AgXc-v0.1.4" / "config.ocio"
+    proc = oog.get_proc()
+    proc: ocio.CPUProcessor = proc.getDefaultCPUProcessor()
 
-    def setUp(self):
-        self.oog = processes.OcioOperationGraph(config=self.config_path)
-        img = ocex.c.DATA_DIR / "renders" / "dragonscene_ap0.half.1001.exr"
-        self.img_render = colour.io.read_image(str(img))
-        return
+    out = img.copy()
+    proc.applyRGB(out)
+    return out
 
-    def tearDown(self):
-        self.oog = None
-        self.img_render = None
-        return
 
-    def _apply_proc_n_write(self):
+class TestOcioOperationGraphSimple(unittest.TestCase):
+    """
+    Mostly to chekc it doesn't raise error
+    """
 
-        proc = self.oog.get_proc()
-        proc: ocio.CPUProcessor = proc.getDefaultCPUProcessor()
-
-        proc.applyRGB(self.img_render)
-
-        out_path = Path(__file__).parent / "_outputs" / f"dragonscene.{self.id()}.jpg"
-        colour.io.write_image(self.img_render, str(out_path))
-        self.assertTrue(out_path.exists())
-
-        if REMOVE_WRITES:
-            out_path.unlink()
-
-        return
+    config = ocio.Config().CreateFromFile(
+        str(ocex.c.DATA_DIR / "configs" / "AgXc-v0.1.4" / "config.ocio")
+    )
 
     def test_proc1(self):
+        oog = processes.OcioOperationGraph(self.config)
+        self.assertRaises(AssertionError, oog.get_proc)
 
-        self.assertRaises(AssertionError, self.oog.get_proc)
-
-        self.oog.input_encoding = "sRGB"
-        self.oog.target_display = "sRGB"
+        oog.input_encoding = "sRGB"
+        oog.target_display = "sRGB"
         # self.oog.target_view = "AgX"
 
-        self.assertRaises(AssertionError, self.oog.get_proc)
+        self.assertRaises(AssertionError, oog.get_proc)
 
         return
 
     def test_proc2(self):
+        oog = processes.OcioOperationGraph(self.config)
 
-        self.oog.input_encoding = "sRGB"
-        self.oog.target_display = "sRGB"
-        self.oog.target_view = "BABABOEI"
+        oog.input_encoding = "sRGB"
+        oog.target_display = "sRGB"
+        oog.target_view = "BABABOEI"
 
-        self.assertRaises(AssertionError, self.oog.get_proc)
+        self.assertRaises(AssertionError, oog.get_proc)
 
         return
 
     def test_proc3(self):
+        oog = processes.OcioOperationGraph(self.config)
 
-        self.oog.input_encoding = "Linear sRGB"
-        self.oog.target_display = "sRGB"
-        self.oog.target_view = "AgX"
-        self.oog.target_looks = "Punchy"
+        oog.input_encoding = "Linear sRGB"
+        oog.target_display = "sRGB"
+        oog.target_view = "AgX"
+        oog.target_looks = "Punchy"
 
-        self.oog.grading.exposure = 0.5
-        self.oog.grading.saturation = 1.2
+        oog.grading.exposure = 0.5
+        oog.grading.saturation = 1.2
 
-        self.oog.get_proc()
+        oog.get_proc()
 
         return
 
-    def test_write(self):
 
-        self.oog.input_encoding = "ACES2065-1"
-        self.oog.target_display = "sRGB"
-        self.oog.target_view = "AgX Punchy"
-        # self.oog.target_looks = "Punchy"
+class TestOcioOperationGraphAgx(testing.BaseTransformtest, unittest.TestCase):
 
-        # self.oog.grading.exposure = 1.5
-        # self.oog.grading.saturation = 15
-        self.oog.grading.contrast = (0.1, 1.0, 1.0)
-        # TODO contrast looks broken, find workaround
+    config = ocio.Config().CreateFromFile(
+        str(ocex.c.DATA_DIR / "configs" / "AgXc-v0.1.4" / "config.ocio")
+    )
 
-        self._apply_proc_n_write()
+    imgs: testing.DataArrayStack = testing.DataArrayStack(
+        (0.5, 0.1, 0.1),
+        (0.36, 1.4523, 0.7),
+        ocex.c.DATA_DIR / "renders" / "dragonscene_ap0.half.1001.exr",
+    )
+
+    method = [apply_proc]
+
+    def setUp(self):
+        super().setUp()
+
+    def tearDown(self):
+        super().tearDown()
+
+    def test_1(self):
+
+        self.precision = 0.05
+        self.precision_method = "relativeTolerance"
+
+        oog = processes.OcioOperationGraph(self.config)
+
+        oog.input_encoding = "ACES2065-1"
+        oog.target_display = "sRGB"
+        oog.target_view = "AgX Punchy"
+        # oog.target_looks = "Punchy"
+
+        oog.grading.exposure = 1.5
+        oog.grading.saturation = 15
+
+        self.params = {"oog": oog, "config": self.config}
+        # all generated through nuke
+        self.expected = testing.DataArrayStack(
+            testing.DataArray((1.02972, 0.80339, 0.80359)),
+            testing.DataArray((0.85478, 1.00726, 0.85478)),
+            testing.DataArray(RENDER_TEST_1),
+        )
         return
 
-    def test_write_2(self):
+    def test_2(self):
 
-        self.oog.input_encoding = "ACES2065-1"
-        self.oog.target_display = "sRGB"
-        self.oog.target_view = "AgX"
-        # self.oog.target_looks = "OverExposed"
+        oog = processes.OcioOperationGraph(self.config)
 
-        self.oog.grading.offset = 0.3
+        oog.input_encoding = "ACES2065-1"
+        oog.target_display = "sRGB"
+        oog.target_view = "AgX"
+        oog.target_looks = "OverExposed"
 
-        self._apply_proc_n_write()
+        self.params = {"oog": oog, "config": self.config}
+        # all generated through nuke
+        self.expected = testing.DataArrayStack(
+            testing.DataArray((0.90552, 0.47522, 0.62818)),
+            testing.DataArray((0.68929, 0.94798, 0.8691)),
+            None,  # we skip the render for this one
+        )
         return
 
 

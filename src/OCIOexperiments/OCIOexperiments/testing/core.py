@@ -4,7 +4,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Callable, List, Union, Tuple, NewType
+from typing import Callable, List, Union, Tuple, NewType, Literal
 
 import numpy.testing
 
@@ -14,7 +14,11 @@ from OCIOexperiments.io import img2str
 __all__ = ("DataArray", "BaseTransformtest", "DataArrayStack")
 
 
-DataType = NewType("DataType", Union[Path, str, Tuple[float, float, float]])
+class DataArray:
+    pass
+
+
+DataType = NewType("DataType", Union[Path, str, Tuple[float, float, float], DataArray])
 
 
 class DataArray:
@@ -44,6 +48,10 @@ class DataArray:
 
             self.array = data
 
+        elif isinstance(data, DataArray):
+
+            self.array = data.array
+
         else:
             raise TypeError(f"Unsupported data type {type(data)} passed.")
 
@@ -66,7 +74,7 @@ class DataArrayStack(list):
         Args:
             *args: type supported are defined by DataArray
         """
-        out = list(map(DataArray, args))
+        out = [DataArray(arg) if arg is not None else None for arg in args]
         super().__init__(out)
         return
 
@@ -119,13 +127,25 @@ class BaseTransformtest(ABC):
     # HACK: wrap the function in a list so when called in class, self is not passed
     method: List[Callable[[numpy.ndarray, ...], numpy.ndarray]] = None
 
+    # All the under MUST be overriden at instance level.
+    expected: DataArrayStack = None
+    params: dict = None
+    """
+    kwargs to pass to self.method
+    """
+    precision: Union[int, float] = None
+    """
+    Unit scale depends of the chosen precision_method.
+    """
+    precision_method: Literal["decimal", "relativeTolerance"] = None
+
     @abstractmethod
     def setUp(self):
 
-        self.expected: DataArrayStack = None
-        self.params: dict = {}
-        "kwargs to pass to self.method"
-        self.precision: int = 4
+        self.expected = None
+        self.params = {}
+        self.precision = 4
+        self.precision_method = "decimal"
 
     @abstractmethod
     def tearDown(self):
@@ -139,6 +159,12 @@ class BaseTransformtest(ABC):
 
                 result = self.method[0](img, **self.params)
                 expected: DataArray = self.expected[i]
+                if not expected:
+                    self.log(
+                        f"Missing expected for index {i}: skipping subtest.",
+                        subtestId=i,
+                    )
+                    continue
                 expected: numpy.ndarray = expected.array
 
                 msg = (
@@ -147,7 +173,19 @@ class BaseTransformtest(ABC):
                     f"Expected={img2str(expected)}-{expected.shape}"
                 )
                 self.log(msg, subtestId=i)
-                numpy.testing.assert_almost_equal(result, expected, self.precision, msg)
+
+                if self.precision_method == "decimal":
+                    numpy.testing.assert_almost_equal(
+                        result, expected, self.precision, msg
+                    )
+                elif self.precision_method == "relativeTolerance":
+                    numpy.testing.assert_allclose(
+                        result, expected, self.precision, err_msg=msg
+                    )
+                else:
+                    raise TypeError(
+                        f"Unsported precision_method {self.precision_method}"
+                    )
 
         self.expected = None
         self.params = None
