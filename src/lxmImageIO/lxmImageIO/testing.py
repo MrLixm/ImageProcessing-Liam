@@ -14,13 +14,19 @@ __all__ = ("BaseTransformtest",)
 
 class BaseTransformtest(ABC):
     """
-    Apply color processes on a bunch of RGB images holded in imgs.
-    Define one time the process to apply and test it automatically on different array
-    image.
+    Apply color processes on a bunch of RGB images holded in ``imgs`` attribute.
+    Define one time the process to apply (``method``) and test it automatically on
+    different array image.
+    ::
 
-    Must be subclassed with unittest.case.
+        imgs:       method(**params):              expected
+        array --------->|-------> asert equal <--- array
+        array --------->|-------> asert equal <--- array
+        ...   --------->|-------> asert equal <--- ...
 
-    setUp and tearDown must be re-implemented, but you can just call super()
+    Must be subclassed with ``unittest.TestCase``
+
+    ``setUp`` and ``tearDown`` must be re-implemented, but you can just call super()
     """
 
     imgs: liio.containers.DataArrayStack = liio.containers.DataArrayStack(
@@ -36,18 +42,41 @@ class BaseTransformtest(ABC):
 
     # HACK: wrap the function in a list so when called in class, self is not passed
     method: List[Callable[[numpy.ndarray, ...], numpy.ndarray]] = None
+    """
+    function to apply on all images from ``imgs`` that then produce the 
+    images in ``expected``.
+    
+    Function expect at least:
+    
+    - an image as numpy ndarray as first argument
+    - return the processed argument image, still as numpy.ndarray
+    
+    HACK: wrap the function in a list so when called in class, self is not passed
+    """
 
     # All the under MUST be overriden at instance level.
     expected: liio.containers.DataArrayStack = None
+    """
+    list of images that must assert equal to the ones in ``imgs`` attribute
+    """
     params: dict = None
     """
-    kwargs to pass to self.method
+    kwargs to pass to ``method`` attribute
     """
     precision: Union[int, float] = None
     """
     Unit scale depends of the chosen precision_method.
     """
     precision_method: Literal["decimal", "relativeTolerance"] = None
+    """
+    Which numpy function to use to assert arrays :
+    
+    -
+        decimal : equal up to the number of given decimals (``precision`` attribute)
+    - 
+        relativeTolerance : equal up to a given tolerance factor. Best for complex 
+        operations that might produce imprecisions.
+    """
 
     @abstractmethod
     def setUp(self):

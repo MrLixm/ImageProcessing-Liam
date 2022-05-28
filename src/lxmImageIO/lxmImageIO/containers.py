@@ -3,16 +3,25 @@
 """
 from __future__ import annotations
 from dataclasses import dataclass
+import logging
 from pathlib import Path
-from typing import Callable, List, Union, Tuple, NewType, Literal, Optional
+from typing import Callable, Union, Tuple, NewType, Optional
 
 import numpy
 import numpy.testing
-
 import lxmImageIO as liio
 import PyOpenColorIO as ocio
 
-__all__ = ("ImageContainer",)
+from . import c
+
+__all__ = (
+    "ImageContainer",
+    "DataArray",
+    "DataArrayStack",
+)
+
+
+logger = logging.getLogger(f"{c.ABR}.containers")
 
 
 @dataclass
@@ -48,6 +57,7 @@ class ImageContainer:
 
 
 class DataArray:
+    # HACK: pre-declared for the under type hint
     pass
 
 
@@ -60,7 +70,7 @@ class DataArray:
         Low-level entity representing an arbitrary data as a numpy array.
         (even if for now these are images).
 
-        Data argument can be different type that will be automatically converted
+        Can be build from different object type that will be automatically converted
         internally to an array.
 
         Args:
@@ -91,18 +101,26 @@ class DataArray:
         return
 
     @property
-    def array(self) -> numpy.ndarray:
-        return self._data.copy()
+    def array(self, copy=True) -> numpy.ndarray:
+        return self.get_array()
 
     @array.setter
     def array(self, data_value: numpy.ndarray):
         self._data = data_value
 
+    def get_array(self, copy=True):
+        """
+        Args:
+            copy: True to return a copy of the array
+        """
+        return self._data.copy() if copy else self._data
+
 
 class DataArrayStack(list):
     def __init__(self, *args: DataType):
         """
-        A groups of DataArray to batch-apply similar process.
+        A groups of DataArray.
+        Used to batch-apply a similar process to them.
 
         Args:
             *args: type supported are defined by DataArray
@@ -118,6 +136,11 @@ class DataArrayStack(list):
         **kwargs,
     ) -> DataArrayStack:
         """
+        Apply the given ``op`` function to all the holded DataArray.
+        This op function must expect:
+
+        - an image as numpy ndarray as first argument
+        - return the processed argument image, still as numpy.ndarray
 
         Args:
             op: function to call on each array holded
