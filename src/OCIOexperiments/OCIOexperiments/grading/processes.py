@@ -28,6 +28,14 @@ class BaseOpGraph(ABC):
         """
         pass
 
+    @abstractmethod
+    def validate(self):
+        """
+        Raises:
+            AssertionError: if this instance is malformed.
+        """
+        pass
+
 
 class InToDisplayGradedGraph(BaseOpGraph):
     """
@@ -38,9 +46,24 @@ class InToDisplayGradedGraph(BaseOpGraph):
 
     The workspace colorspace is assumed to be the role ``SCENE_LINEAR`` by default but
     can be changed.
+
+    Args:
+        config: OCIO config to use
+        input_encoding: see doc for the attribute of the same name
+        target_display: see doc for the attribute of the same name
+        target_view: see doc for the attribute of the same name
+        target_looks: see doc for the attribute of the same name
+
     """
 
-    def __init__(self, config: Union[Path, ocio.Config]):
+    def __init__(
+        self,
+        config: Union[Path, ocio.Config],
+        input_encoding: Optional[str] = None,
+        target_display: Optional[str] = None,
+        target_view: Optional[str] = None,
+        target_looks: Optional[str] = None,
+    ):
 
         self._config: ocio.Config
         if isinstance(config, Path):
@@ -50,7 +73,7 @@ class InToDisplayGradedGraph(BaseOpGraph):
 
         self._config.validate()
 
-        self.input_encoding: str = None
+        self.input_encoding: str = input_encoding
         """
         Also called IDT.
         Specify the colorspace in which the input is encoded to be converted to 
@@ -69,9 +92,9 @@ class InToDisplayGradedGraph(BaseOpGraph):
         """
 
         # to Display conversions
-        self.target_display: str = None
-        self.target_view: str = None
-        self.target_looks: Optional[str] = None
+        self.target_display: str = target_display
+        self.target_view: str = target_view
+        self.target_looks: Optional[str] = target_looks
         """
         List of Looks to apply following the OCIO conventions :
 
