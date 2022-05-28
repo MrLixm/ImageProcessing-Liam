@@ -123,9 +123,9 @@ class GLImage:
     """
 
     # noinspection PyTypeChecker
-    def __init__(self, ocio_operation: grading.processes.OcioOperationGraph):
+    def __init__(self, ocio_operation: grading.processes.InToDisplayGradedGraph):
 
-        self.ocioops: grading.processes.OcioOperationGraph = ocio_operation
+        self.ocioops: grading.processes.InToDisplayGradedGraph = ocio_operation
         """
         OCIO operations to apply on the image. Modified in live by the user.
         """
@@ -362,7 +362,7 @@ class GLImage:
             force: if True force re-processing even if the proc cacheID is similar
                 to the previously runned one.
         """
-        assert self.ocioops, "[load] No OcioOperationGraph has been supplied yet !"
+        assert self.ocioops, "[load] No InToDisplayGradedGraph has been supplied yet !"
 
         proc = self.ocioops.get_proc()
         if proc.getCacheID() == self.__previous_shader_cache_id and not force:

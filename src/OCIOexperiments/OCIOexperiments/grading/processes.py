@@ -2,6 +2,7 @@
 
 """
 import logging
+from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import (
     Optional,
@@ -13,13 +14,22 @@ import PyOpenColorIO as ocio
 from . import c
 from .interactive import GradingInteractive
 
-__all__ = ("OcioOperationGraph",)
+__all__ = ("InToDisplayGradedGraph",)
 
 
 logger = logging.getLogger(f"{c.ABR}.processes")
 
 
-class OcioOperationGraph:
+class BaseOpGraph(ABC):
+    @abstractmethod
+    def get_proc(self) -> ocio.Processor:
+        """
+        Synthetize the graph of operation to an OCIO processor.
+        """
+        pass
+
+
+class InToDisplayGradedGraph(BaseOpGraph):
     """
     Describe color operations to perform on an image that has just been decoded from disk.
     The whole pipeline is described as:
@@ -27,8 +37,7 @@ class OcioOperationGraph:
     ``input-> working space -> grading -> display``
 
     The workspace colorspace is assumed to be the role ``SCENE_LINEAR`` by default but
-    can be changed. If "log-flavored" you could for example set
-    <GradingInteractive> grading_space to <ocio.GRADING_LOG> to adapat grading operation
+    can be changed.
     """
 
     def __init__(self, config: Union[Path, ocio.Config]):

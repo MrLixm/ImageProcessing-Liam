@@ -21,18 +21,18 @@ class TestOcioOperationGraph(unittest.TestCase):
         # Must not raise anything
 
         config_path = ocex.c.DATA_DIR / "configs" / "AgXc-v0.1.4" / "config.ocio"
-        oog = processes.OcioOperationGraph(config=config_path)
+        oog = processes.InToDisplayGradedGraph(config=config_path)
 
         config = ocio.Config().CreateFromFile(str(config_path))
-        oog = processes.OcioOperationGraph(config=config_path)
+        oog = processes.InToDisplayGradedGraph(config=config_path)
 
-        self.assertRaises(Exception, partial(processes.OcioOperationGraph, "C:"))
+        self.assertRaises(Exception, partial(processes.InToDisplayGradedGraph, "C:"))
 
         return
 
 
 def apply_proc(
-    img: numpy.ndarray, oog: processes.OcioOperationGraph, config: ocio.Config
+    img: numpy.ndarray, oog: processes.InToDisplayGradedGraph, config: ocio.Config
 ):
 
     proc = oog.get_proc()
@@ -53,7 +53,7 @@ class TestOcioOperationGraphSimple(unittest.TestCase):
     )
 
     def test_proc1(self):
-        oog = processes.OcioOperationGraph(self.config)
+        oog = processes.InToDisplayGradedGraph(self.config)
         self.assertRaises(AssertionError, oog.get_proc)
 
         oog.input_encoding = "sRGB"
@@ -65,7 +65,7 @@ class TestOcioOperationGraphSimple(unittest.TestCase):
         return
 
     def test_proc2(self):
-        oog = processes.OcioOperationGraph(self.config)
+        oog = processes.InToDisplayGradedGraph(self.config)
 
         oog.input_encoding = "sRGB"
         oog.target_display = "sRGB"
@@ -76,7 +76,7 @@ class TestOcioOperationGraphSimple(unittest.TestCase):
         return
 
     def test_proc3(self):
-        oog = processes.OcioOperationGraph(self.config)
+        oog = processes.InToDisplayGradedGraph(self.config)
 
         oog.input_encoding = "Linear sRGB"
         oog.target_display = "sRGB"
@@ -116,7 +116,7 @@ class TestOcioOperationGraphAgx(testing.BaseTransformtest, unittest.TestCase):
         self.precision = 0.05
         self.precision_method = "relativeTolerance"
 
-        oog = processes.OcioOperationGraph(self.config)
+        oog = processes.InToDisplayGradedGraph(self.config)
 
         oog.input_encoding = "ACES2065-1"
         oog.target_display = "sRGB"
@@ -137,7 +137,7 @@ class TestOcioOperationGraphAgx(testing.BaseTransformtest, unittest.TestCase):
 
     def test_2(self):
 
-        oog = processes.OcioOperationGraph(self.config)
+        oog = processes.InToDisplayGradedGraph(self.config)
 
         oog.input_encoding = "ACES2065-1"
         oog.target_display = "sRGB"
