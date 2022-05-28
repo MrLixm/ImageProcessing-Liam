@@ -3,8 +3,9 @@ import PyOpenColorIO as ocio
 import numpy
 import numpy.testing
 
+from lxmImageIO import testing
+from lxmImageIO import containers
 import OCIOexperiments as ocex
-from OCIOexperiments import testing
 from OCIOexperiments.grading import interactive
 
 
@@ -68,9 +69,8 @@ class TestGradingInteractive(unittest.TestCase):
         gi = interactive.GradingInteractive()
 
         gi.saturation = 0.1
-        gi.is_default
-        # self.assertTrue(gi.is_modified_sat_only)
-        # self.assertFalse(gi.is_default)
+        self.assertTrue(gi.is_modified_sat_only)
+        self.assertFalse(gi.is_default)
 
         return
 
@@ -165,7 +165,7 @@ class TestGradingInteractiveData(testing.BaseTransformtest, unittest.TestCase):
         str(ocex.c.DATA_DIR / "configs" / "AgXc-v0.1.4" / "config.ocio")
     )
 
-    imgs: testing.DataArrayStack = testing.DataArrayStack(
+    imgs: containers.DataArrayStack = containers.DataArrayStack(
         (0.5, 0.1, 0.1),
         (0.36, 1.4523, 0.7),
         ocex.c.DATA_DIR / "renders" / "dragonscene_ap0.half.1001.exr",

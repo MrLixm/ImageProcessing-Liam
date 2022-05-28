@@ -3,11 +3,11 @@ from functools import partial
 from pathlib import Path
 
 import PyOpenColorIO as ocio
-import colour.io
 import numpy.testing
 
+from lxmImageIO import testing
+from lxmImageIO import containers
 import OCIOexperiments as ocex
-from OCIOexperiments import testing
 from OCIOexperiments.grading import processes
 
 
@@ -97,7 +97,7 @@ class TestOcioOperationGraphAgx(testing.BaseTransformtest, unittest.TestCase):
         str(ocex.c.DATA_DIR / "configs" / "AgXc-v0.1.4" / "config.ocio")
     )
 
-    imgs: testing.DataArrayStack = testing.DataArrayStack(
+    imgs: containers.DataArrayStack = containers.DataArrayStack(
         (0.5, 0.1, 0.1),
         (0.36, 1.4523, 0.7),
         ocex.c.DATA_DIR / "renders" / "dragonscene_ap0.half.1001.exr",
@@ -128,10 +128,10 @@ class TestOcioOperationGraphAgx(testing.BaseTransformtest, unittest.TestCase):
 
         self.params = {"oog": oog, "config": self.config}
         # all generated through nuke
-        self.expected = testing.DataArrayStack(
-            testing.DataArray((1.02972, 0.80339, 0.80359)),
-            testing.DataArray((0.85478, 1.00726, 0.85478)),
-            testing.DataArray(RENDER_TEST_1),
+        self.expected = containers.DataArrayStack(
+            containers.DataArray((1.02972, 0.80339, 0.80359)),
+            containers.DataArray((0.85478, 1.00726, 0.85478)),
+            containers.DataArray(RENDER_TEST_1),
         )
         return
 
@@ -146,9 +146,9 @@ class TestOcioOperationGraphAgx(testing.BaseTransformtest, unittest.TestCase):
 
         self.params = {"oog": oog, "config": self.config}
         # all generated through nuke
-        self.expected = testing.DataArrayStack(
-            testing.DataArray((0.90552, 0.47522, 0.62818)),
-            testing.DataArray((0.68929, 0.94798, 0.8691)),
+        self.expected = containers.DataArrayStack(
+            containers.DataArray((0.90552, 0.47522, 0.62818)),
+            containers.DataArray((0.68929, 0.94798, 0.8691)),
             None,  # we skip the render for this one
         )
         return
