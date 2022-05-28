@@ -9,8 +9,6 @@ import numpy
 
 import PyOpenColorIO as ocio
 
-from . import ocioUtils
-
 __all__ = (
     "ImageContainer",
     "convert_gpu",

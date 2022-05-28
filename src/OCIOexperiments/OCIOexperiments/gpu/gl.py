@@ -14,7 +14,7 @@ import PyOpenColorIO as ocio
 from . import c
 from . import main
 from . import glUtils
-from . import ocioUtils
+from .. import grading
 
 logger = logging.getLogger(f"{c.ABR}.gl")
 
@@ -123,9 +123,9 @@ class GLImage:
     """
 
     # noinspection PyTypeChecker
-    def __init__(self, ocio_operation: ocioUtils.OcioOperationGraph):
+    def __init__(self, ocio_operation: grading.processes.OcioOperationGraph):
 
-        self.ocioops: ocioUtils.OcioOperationGraph = ocio_operation
+        self.ocioops: grading.processes.OcioOperationGraph = ocio_operation
         """
         OCIO operations to apply on the image. Modified in live by the user.
         """
