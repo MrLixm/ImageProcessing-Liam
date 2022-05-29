@@ -17,7 +17,7 @@ logger = logging.getLogger(f"{c.ABR}.write")
 
 def writeToArray(
     array: numpy.ndarray,
-    export_path: Path,
+    target: Path,
     bitdepth: Union[numpy.float32, numpy.uint16, numpy.uint8],
     method: Literal["oiio", "cv2", "pillow"],
     **kwargs,
@@ -28,7 +28,7 @@ def writeToArray(
         bitdepth:
         array:
             numpy array: (R-G-B encoded)(float32 type)
-        export_path: full path with extension for export
+        target: full path with extension for export
         method: which librairy to choose for export
         **kwargs: kwargs passed to the writing method for each librairy
 
@@ -51,7 +51,7 @@ def writeToArray(
             array,
             cv2.COLOR_RGB2BGR,
         )
-        cv2.imwrite(str(export_path), array, **kwargs)
+        cv2.imwrite(str(target), array, **kwargs)
 
     elif method == "pillow":
 
@@ -60,7 +60,7 @@ def writeToArray(
             array: numpy.ndarray = array.astype(bitdepth)
 
         out_image: PIL.Image.Image = PIL.Image.fromarray(array, mode="RGB")
-        out_image.save(export_path, **kwargs)
+        out_image.save(target, **kwargs)
 
     elif method == "oiio":
 
@@ -69,8 +69,8 @@ def writeToArray(
         else:
             _bitdepth = oiio.TypeDesc.TypeInt
 
-        out_image: oiio.ImageOutput = oiio.ImageOutput.create(str(export_path))
-        assert out_image, f"OIIO: ImageOutput for {export_path} not created."
+        out_image: oiio.ImageOutput = oiio.ImageOutput.create(str(target))
+        assert out_image, f"OIIO: ImageOutput for {target} not created."
         spec = oiio.ImageSpec(
             array.shape[1],
             array.shape[0],
@@ -78,7 +78,7 @@ def writeToArray(
             _bitdepth,
         )
 
-        out_image.open(str(export_path), spec)
+        out_image.open(str(target), spec)
         try:
             out_image.write_image(array)
         except:
@@ -86,5 +86,5 @@ def writeToArray(
         finally:
             out_image.close()
 
-    logger.info(f"[array_write] Array {array.shape} exported to <{export_path}>.")
+    logger.info(f"[array_write] Array {array.shape} exported to <{target}>.")
     return

@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Union, Tuple, NewType, Literal
+from typing import Union, Tuple, NewType, Literal, Optional
 
 import colour.io
 import cv2
@@ -22,14 +22,14 @@ logger = logging.getLogger(f"{c.ABR}.read")
 
 
 def readToArray(
-    input_path: Path,
+    source: Path,
     method: Literal["oiio", "cv2", "pillow", "colour"],
     **kwargs,
 ) -> numpy.ndarray:
     """
 
     Args:
-        input_path: full path with extension for input reading
+        source: full path with extension for input reading
         method: which librairy to choose for export
         **kwargs: kwargs passed to the writing method for each librairy
 
@@ -40,7 +40,7 @@ def readToArray(
 
     if method == "cv2":
 
-        array: numpy.ndarray = cv2.imread(str(input_path), **kwargs)
+        array: numpy.ndarray = cv2.imread(str(source), **kwargs)
         array = cv2.cvtColor(
             array,
             cv2.COLOR_BGR2RGB,
@@ -52,19 +52,19 @@ def readToArray(
 
     elif method == "pillow":
 
-        array: PIL.Image.Image = PIL.Image.open(input_path, **kwargs)
+        array: PIL.Image.Image = PIL.Image.open(source, **kwargs)
         array: numpy.ndarray = array.__array__(dtype=numpy.float32)
 
     elif method == "oiio":
 
-        array: oiio.ImageInput = oiio.ImageInput.open(str(input_path), **kwargs)
-        assert array, f"OIIO: ImageInput for {input_path} not created."
+        array: oiio.ImageInput = oiio.ImageInput.open(str(source), **kwargs)
+        assert array, f"OIIO: ImageInput for {source} not created."
         array: numpy.ndarray = array.read_image(oiio.FLOAT)
 
     elif method == "colour":
 
         array: numpy.ndarray = colour.io.read_image(
-            str(input_path),
+            str(source),
             bit_depth="float32",
             **kwargs,
         )
@@ -72,16 +72,17 @@ def readToArray(
     else:
         raise ValueError(f"Method <{method}> passed is not supported.")
 
-    logger.info(
-        f"[array_read] Array {array.shape}|{array.dtype} found in <{input_path}>."
-    )
+    logger.info(f"[array_read] Array {array.shape}|{array.dtype} found in <{source}>.")
     return array
 
 
-def readToImage(input_path: Path, colorspace=None) -> liio.containers.ImageContainer:
+def readToImage(
+    source: Path,
+    colorspace: Optional[str] = None,
+) -> liio.containers.ImageContainer:
 
-    imgin: oiio.ImageInput = oiio.ImageInput.open(str(input_path))
-    assert imgin, f"[readToImage] OIIO: ImageInput for {input_path} not created."
+    imgin: oiio.ImageInput = oiio.ImageInput.open(str(source))
+    assert imgin, f"[readToImage] OIIO: ImageInput for {source} not created."
     array: numpy.ndarray = imgin.read_image(oiio.FLOAT)
     imgspec: oiio.ImageSpec = imgin.spec()
 
@@ -92,7 +93,7 @@ def readToImage(input_path: Path, colorspace=None) -> liio.containers.ImageConta
         channels=imgspec.nchannels,
         # TODO better colorspace handling with ocio.ColorSpace
         colorspace=colorspace,
-        path=input_path,
+        path=source,
     )
     return img
 
@@ -103,29 +104,29 @@ DataArrayTypes = NewType(
 )
 
 
-def readToDataArray(data: DataArrayTypes) -> liio.containers.DataArray:
+def readToDataArray(source: DataArrayTypes) -> liio.containers.DataArray:
     """
     Convert different type of objects representing an array to a DataArray instance.
     """
 
-    if isinstance(data, (Path, str)):
+    if isinstance(source, (Path, str)):
 
-        array = readToArray(Path(data), method="oiio")
+        array = readToArray(Path(source), method="oiio")
 
-    elif isinstance(data, tuple) and len(data) == 3:
+    elif isinstance(source, tuple) and len(source) == 3:
 
-        array = liio.io.create.createConstantImage(data)
+        array = liio.io.create.createConstantImage(source)
 
-    elif isinstance(data, numpy.ndarray):
+    elif isinstance(source, numpy.ndarray):
 
-        array = data
+        array = source
 
-    elif isinstance(data, liio.containers.DataArray):
+    elif isinstance(source, liio.containers.DataArray):
 
-        return data
+        return source
 
     else:
-        raise TypeError(f"Unsupported data type {type(data)} passed.")
+        raise TypeError(f"Unsupported data type {type(source)} passed.")
 
     return liio.containers.DataArray(array=array)
 
