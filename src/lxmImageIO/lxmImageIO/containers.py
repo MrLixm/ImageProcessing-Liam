@@ -40,13 +40,13 @@ class ImageContainer:
     """
     Number of channels the array has.
     """
-    colorspace: ocio.ColorSpace
+    colorspace: Optional[ocio.ColorSpace]
     """
     Colorspace the pixel array is encoded in.
     """
     path: Optional[Path]
     """
-    File path from where this image was stored.
+    File path from where this image was stored. None if generated from scratch.
     """
 
     def __repr__(self):
