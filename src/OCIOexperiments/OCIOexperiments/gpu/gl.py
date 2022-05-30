@@ -164,6 +164,7 @@ class GLImage:
         the same operation.
         """
 
+        logger.debug(f"[{self.__class__.__name__}][__init__] Finished.")
         return
 
     @property
