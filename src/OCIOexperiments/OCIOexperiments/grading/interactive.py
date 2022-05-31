@@ -67,14 +67,25 @@ class GradingInteractive:
     """
 
     _propconfig: ClassVar[Dict[str, ocio.DynamicPropertyType]] = {
-        "exposure": (exposure, ocio.DYNAMIC_PROPERTY_EXPOSURE),
-        "gamma": (gamma, ocio.DYNAMIC_PROPERTY_GAMMA),
-        "saturation": (saturation, ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY),
-        "grading_space": (grading_space, ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY),
+        "exposure": (exposure, ocio.DYNAMIC_PROPERTY_EXPOSURE, None),
+        "gamma": (gamma, ocio.DYNAMIC_PROPERTY_GAMMA, None),
+        "saturation": (
+            saturation,
+            ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY,
+            "_grading_primary",
+        ),
+        "grading_space": (
+            grading_space,
+            ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY,
+            "_grading_primary",
+        ),
     }
     """
-    | Dict of {*class attribute name*: *config tuple*, ...}.
-    | Where *config tuple* = (*default value*, *associated dynamic prop*)
+    | Dict of {``class attribute name``: ``config tuple``, ...}.
+    | Where ``config tuple`` = (
+        "default value",
+        "associated dynamic prop",
+        "dynamic prop value to send, a class attribute name too")
     """
 
     sgn_dynamicprops: ClassVar[Signal] = Signal()
@@ -196,8 +207,10 @@ class GradingInteractive:
     def update_all_shader_dyn_prop(self, shader: ocio.GpuShaderDesc):
 
         for classattribute, data in self._propconfig.items():
-            _, dynamicprop = data
-            v = self.__getattribute__(classattribute)
+            _, dynamicprop, dynamicprop_value = data
+            v = self.__getattribute__(
+                classattribute if dynamicprop_value is None else dynamicprop_value
+            )
             ocex.utils.update_shader_dyn_prop(
                 shader=shader, prop_type=dynamicprop, value=v
             )

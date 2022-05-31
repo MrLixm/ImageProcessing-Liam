@@ -120,6 +120,7 @@ class TestGradingInteractive(unittest.TestCase):
 class TestGradingInteractiveSignals(unittest.TestCase):
     def setUp(self):
         self.gi = interactive.GradingInteractive()
+        self.gi.sgn_dynamicprops.connect(self._signal_receiver)
         self.dynamicprop = None
         self.dynamicprop_value = None
         return
@@ -130,24 +131,28 @@ class TestGradingInteractiveSignals(unittest.TestCase):
         self.dynamicprop_value = None
         return
 
-    def test_signals(self):
-
-        self.gi.sgn_dynamicprops.connect(self._signal_receiver)
+    def test_exposure(self):
 
         self.gi.exposure = 2.5
 
         self.assertEqual(self.dynamicprop, ocio.DYNAMIC_PROPERTY_EXPOSURE)
         self.assertEqual(self.dynamicprop_value, 2.5)
 
+    def test_gamma(self):
+
         self.gi.gamma = 2.2
 
         self.assertEqual(self.dynamicprop, ocio.DYNAMIC_PROPERTY_GAMMA)
         self.assertEqual(self.dynamicprop_value, 2.2)
 
+    def test_saturation(self):
+
         self.gi.saturation = 4.6
 
         self.assertEqual(self.dynamicprop, ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY)
         self.assertEqual(self.dynamicprop_value, 4.6)
+
+    def test_grading_space(self):
 
         self.gi.grading_space = ocio.GRADING_LIN
 
@@ -211,6 +216,54 @@ class TestGradingInteractiveData(testing.BaseTransformtest, unittest.TestCase):
 
         self.params = {"gi": gi, "config": self.config}
         self.expected = self.imgs.apply_op(ocex.transforms.saturate, 2.0)
+
+        return
+
+
+class TestGradingInteractiveDynProp(unittest.TestCase):
+
+    config = ocio.Config().CreateFromFile(
+        str(ocex.c.DATA_DIR / "configs" / "AgXc-v0.1.4" / "config.ocio")
+    )
+
+    def test_shaderdynprop(self):
+
+        gi = interactive.GradingInteractive()
+
+        grptransform = ocio.GroupTransform()
+        for trsfm in gi.as_transforms():
+            grptransform.appendTransform(trsfm)
+
+        proc = self.config.getProcessor(grptransform)
+
+        shader_desc: ocio.GpuShaderDesc = ocio.GpuShaderDesc.CreateShaderDesc(
+            language=ocio.GPU_LANGUAGE_GLSL_4_0
+        )
+        ocio_gpu_proc = proc.getDefaultGPUProcessor()
+        ocio_gpu_proc.extractGpuShaderInfo(shader_desc)
+
+        gi.saturation = 0.5
+        gi.exposure = 1.3
+
+        dynProp: ocio.DynamicProperty = shader_desc.getDynamicProperty(
+            ocio.DYNAMIC_PROPERTY_EXPOSURE
+        )
+        self.assertEqual(dynProp.getDouble(), 0.0)
+
+        gi.update_all_shader_dyn_prop(shader=shader_desc)
+
+        dynProp: ocio.DynamicProperty = shader_desc.getDynamicProperty(
+            ocio.DYNAMIC_PROPERTY_EXPOSURE
+        )
+        self.assertEqual(dynProp.getDouble(), 1.3)
+        dynProp: ocio.DynamicProperty = shader_desc.getDynamicProperty(
+            ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY
+        )
+        # HACK: https://github.com/AcademySoftwareFoundation/OpenColorIO/issues/1655
+        self.assertEqual(
+            dynProp.getGradingPrimary().saturation, gi._grading_primary.saturation
+        )
+        self.assertEqual(dynProp.getGradingPrimary().saturation, 0.5)
 
         return
 
