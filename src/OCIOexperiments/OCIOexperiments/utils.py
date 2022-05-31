@@ -41,5 +41,12 @@ def update_shader_dyn_prop(
 
     if shader.hasDynamicProperty(prop_type):
         dyn_prop: ocio.DynamicProperty = shader.getDynamicProperty(prop_type)
-        dyn_prop.setDouble(value)
+        if prop_type is ocio.DYNAMIC_PROPERTY_GRADING_PRIMARY:
+            dyn_prop.setGradingPrimary(value)
+        elif prop_type is ocio.DYNAMIC_PROPERTY_GRADING_RGBCURVE:
+            dyn_prop.setGradingRGBCurve(value)
+        elif prop_type is ocio.DYNAMIC_PROPERTY_GRADING_TONE:
+            dyn_prop.setGradingTone(value)
+        else:
+            dyn_prop.setDouble(value)
         return dyn_prop

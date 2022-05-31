@@ -11,9 +11,10 @@ import pixelDataTesting as pxdt
 import OCIOexperiments as ocex
 from OCIOexperiments import grading
 from OCIOexperiments.gpu.gl import GLImage
+from OCIOexperiments.gpu.windowCreate import create_window
 
 
-logger = logging.getLogger(f"{ocex.c.ABR}.tests_basic")
+logger = logging.getLogger(f"{ocex.c.ABR}.tests_gpuProcess")
 
 
 def setup_logging(level):
@@ -55,7 +56,7 @@ def main():
         config=config,
         input_encoding="sRGB",
         target_display="sRGB",
-        target_view="Agx Punchy",
+        target_view="AgX Punchy",
         target_looks=None,
     )
     opgraph.grading.exposure = 0.5
@@ -63,9 +64,10 @@ def main():
 
     logger.info("[main] GLImage Started.")
 
-    glimage = GLImage(ocio_operation=opgraph)
-    glimage.load(image=render1)
-    result = glimage.as_array()
+    with create_window() as wind:
+        glimage = GLImage(ocio_operation=opgraph)
+        glimage.load(image=render1)
+        result = glimage.as_array()
 
     print(result.shape)
 

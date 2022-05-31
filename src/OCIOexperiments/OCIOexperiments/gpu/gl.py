@@ -248,10 +248,11 @@ class GLImage:
         """
 
         assert self._initialized, "Instance has not been initialized yet !"
-        assert self.shader_desc, "Instance doesn't have an OCIO Shader desc yet !"
+        # assert self.shader_desc, "Instance doesn't have an OCIO Shader desc yet !"
 
         if (
-            not force
+            self.shader_desc
+            and not force
             and self.__previous_shader_cache_id == self.shader_desc.getCacheID()
         ):
             logger.debug(
@@ -283,10 +284,12 @@ class GLImage:
             GL.glDetachShader(self.shader_program, self.shader_frag)
             GL.glDeleteShader(self.shader_frag)
 
-        # Inject OCIO shader block
-        frag_src = c.GLSL_FRAG_OCIO_SRC_FMT.format(
-            ocio_src=self.shader_desc.getShaderText()
-        )
+        # Use default or Inject OCIO shader block
+        frag_src = c.GLSL_FRAG_SRC
+        if self.shader_desc:
+            frag_src = c.GLSL_FRAG_OCIO_SRC_FMT.format(
+                ocio_src=self.shader_desc.getShaderText()
+            )
         self.shader_frag = glUtils.compile_shader(frag_src, GL.GL_FRAGMENT_SHADER)
         if not self.shader_frag:
             logger.debug(
@@ -308,7 +311,8 @@ class GLImage:
         )
 
         # Store cache ID to detect reuse
-        self.__previous_shader_cache_id = self.shader_desc.getCacheID()
+        if self.shader_desc:
+            self.__previous_shader_cache_id = self.shader_desc.getCacheID()
 
         logger.debug(f"[{self.__class__.__name__}][build_program] Finished.")
         return
@@ -318,6 +322,8 @@ class GLImage:
         Args:
             image: expecting a 32bit float image encoded as R-G-B(-A)
         """
+        logger.debug(f"[{self.__class__.__name__}][load] Started for image {image} .")
+
         self.image = image
 
         if not self._initialized:
@@ -328,7 +334,10 @@ class GLImage:
             array=image.array.ravel(),
             width=image.width,
             height=image.height,
+            alpha=image.channels == 4,
         )
+
+        logger.debug(f"[{self.__class__.__name__}][load] Updated_texture_2d .")
 
         self._update_model_view_mat()
         self._update_ocio_proc()
@@ -518,7 +527,8 @@ class GLImage:
         Bind and/or update dynamic property uniforms needed for the
         current OCIO shader build.
         """
-        assert self.shader_desc, self.shader_program
+        if not self.shader_desc or not self.shader_program:
+            return
 
         for name, uniform_data in self.shader_desc.getUniforms():
 

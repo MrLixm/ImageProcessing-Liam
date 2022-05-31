@@ -72,9 +72,11 @@ def update_texture_2d(
     array: Union[numpy.ndarray, ctypes.c_void_p],
     width: float,
     height: float,
+    alpha: bool = False,
 ):
     """
     Args:
+        alpha: True if the image is RGBA, false for RGB
         texture_id: name of the texture to update
         array:
             image data as pixels representing the texture.
@@ -90,7 +92,7 @@ def update_texture_2d(
         width,  # width
         height,  # height
         0,  # border (always 0)
-        GL.GL_RGBA,  # format
+        GL.GL_RGBA if alpha else GL.GL_RGB,  # format
         GL.GL_FLOAT,  # type
         array,  # pixels
     )
@@ -141,7 +143,6 @@ def create_texture(
     """
 
     # 3D
-    GL.glActiveTexture(texture_active_id)
     GL.glBindTexture(texture_type, texture_id)
     set_texture_filtering(texture_type, texture_info.interpolation)
 
