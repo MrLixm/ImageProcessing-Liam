@@ -34,8 +34,8 @@ class ImageContainer:
     """
     numpy arrays of pixels
     """
-    width: float
-    height: float
+    width: Union[float, int]
+    height: Union[float, int]
     channels: int
     """
     Number of channels the array has.
@@ -52,7 +52,7 @@ class ImageContainer:
     def __repr__(self):
         return (
             f"ImageContainer ({self.width}*{self.height})*{self.channels}"
-            f" | array[{self.array.dtype}] | with path={self.path}"
+            f" | array[{self.array.dtype}] | file name={self.path.name}"
         )
 
 
