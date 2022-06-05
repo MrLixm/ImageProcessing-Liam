@@ -2,7 +2,6 @@
 
 """
 from __future__ import annotations
-
 import numbers
 from abc import ABC
 from typing import Optional, overload, Type
@@ -68,21 +67,24 @@ class V2f(BaseVector):
             if isinstance(args[0], numpy.ndarray):
                 return args[0].view(cls)
 
+        # kwargs just call back to above args
         elif not args and kwargs:
 
-            if isinstance(kwargs.get("v2f"), cls):
-                return kwargs.get("v2f").copy()
+            k = kwargs.get("v2f")
+            if isinstance(k, cls):
+                return cls(k)
 
-            if isinstance(kwargs.get("x"), numbers.Number) and isinstance(
-                kwargs.get("y"), numbers.Number
-            ):
-                return cls(numpy.array((kwargs.get("x"), kwargs.get("y"))))
+            k1 = kwargs.get("x")
+            k2 = kwargs.get("y")
+            if isinstance(k1, numbers.Number) and isinstance(k2, numbers.Number):
+                return cls(k1, k2)
 
-            if isinstance(kwargs.get("array"), numpy.ndarray):
-                return kwargs.get("array").view(cls)
+            k = kwargs.get("array")
+            if isinstance(k, numpy.ndarray):
+                return cls(k)
 
             if not kwargs.get("v2f", True) or not kwargs.get("array", True):
-                return cls(0.0, 0.0)
+                return cls()
 
         raise ValueError(
             f"The given arguments doesn't resolve to a new instance:\n"
@@ -136,31 +138,29 @@ class V3f(BaseVector):
             if isinstance(args[0], numpy.ndarray):
                 return args[0].view(cls)
 
+        # kwargs just call back to above args
         elif not args and kwargs:
 
-            if isinstance(kwargs.get("v3f"), cls):
-                return kwargs.get("v3f").copy()
+            k = kwargs.get("v3f")
+            if isinstance(k, cls):
+                return cls(k)
 
+            k1 = kwargs.get("x")
+            k2 = kwargs.get("y")
+            k3 = kwargs.get("z")
             if (
-                isinstance(kwargs.get("x"), numbers.Number)
-                and isinstance(kwargs.get("y"), numbers.Number)
-                and isinstance(kwargs.get("z"), numbers.Number)
+                isinstance(k1, numbers.Number)
+                and isinstance(k2, numbers.Number)
+                and isinstance(k3, numbers.Number)
             ):
-                return cls(
-                    numpy.array(
-                        (
-                            kwargs.get("x"),
-                            kwargs.get("y"),
-                            kwargs.get("z"),
-                        )
-                    )
-                )
+                return cls(k1, k2, k3)
 
-            if isinstance(kwargs.get("array"), numpy.ndarray):
-                return kwargs.get("array").view(cls)
+            k = kwargs.get("array")
+            if isinstance(k, numpy.ndarray):
+                return cls(k)
 
             if not kwargs.get("v3f", True) or not kwargs.get("array", True):
-                return cls(0.0, 0.0, 0.0)
+                return cls()
 
         raise ValueError(
             f"The given arguments doesn't resolve to a new instance:\n"
