@@ -58,7 +58,6 @@ class TestV2f(unittest.TestCase):
     def test_basic_kwarg_array(self):
 
         self.v2f = lxMath.V2f(array=numpy.array((1920, 1080)))
-
         self.log()
         self.assertEqual(self.v2f.x, 1920)
         self.assertEqual(self.v2f.y, 1080)
@@ -79,13 +78,10 @@ class TestV2f(unittest.TestCase):
     def test_default_kwarg(self):
 
         self.v2f = lxMath.V2f(array=None)
-        self.v2f_b = lxMath.V2f(v2f=None)
 
         self.log()
         self.assertEqual(self.v2f.x, 0.0)
         self.assertEqual(self.v2f.y, 0.0)
-        self.assertEqual(self.v2f_b.x, 0.0)
-        self.assertEqual(self.v2f_b.y, 0.0)
 
     def test_instance(self):
 
@@ -102,7 +98,7 @@ class TestV2f(unittest.TestCase):
     def test_instance_kwargs(self):
 
         self.v2f = lxMath.V2f(0.3, 0.1)
-        self.v2f_b = lxMath.V2f(v2f=self.v2f)
+        self.v2f_b = lxMath.V2f(array=self.v2f)
 
         self.log()
         self.assertEqual(self.v2f_b.x, 0.3)
