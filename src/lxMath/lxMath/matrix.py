@@ -8,7 +8,7 @@ from typing import Optional, overload, Type, Union, List, Tuple, TypeVar
 
 import numpy
 
-from .vector import V3f, V2f
+from .vector import V3f, V2f, BaseVector
 
 __all__ = (
     "BaseMatrix",
@@ -102,19 +102,19 @@ class BaseMatrix(ABC, numpy.ndarray):
         )
 
     @abstractmethod
-    def rotate(self, v: V3f):
+    def rotate(self, angle: numbers.Number):
         pass
 
     @abstractmethod
-    def scale(self, v: V3f):
+    def scale(self, v: BaseVector):
         pass
 
     @abstractmethod
-    def translate(self, v: V3f):
+    def translate(self, v: BaseVector):
         pass
 
     @abstractmethod
-    def shear(self, v: V3f):
+    def shear(self, v: BaseVector):
         pass
 
     def asNdarray(self) -> numpy.ndarray:
@@ -183,20 +183,73 @@ class M33f(BaseMatrix):
     _shape = (3, 3)
     _identity = numpy.identity(3)
 
-    def rotate(self, v: V3f):
-        pass
+    def rotate(self, angle: numbers.Number):
+        """
+        SRC: https://github.dev/AcademySoftwareFoundation/Imath/blob/main/src/Imath/ImathMatrix.h#L3117
 
-    def scale(self, v: V3f):
-        pass
+        Args:
+            angle: angle in radian
+        """
+        self[:] *= M33f().setRotation(angle)
 
-    def translate(self, v: V3f):
-        pass
+    def setRotation(self, angle: numbers.Number):
+        """
+        SRC: https://github.dev/AcademySoftwareFoundation/Imath/blob/main/src/Imath/ImathMatrix.h#L3092
 
-    def shear(self, v: V3f):
-        pass
+        Args:
+            angle: angle in radian
+        """
+        a_cos = numpy.cos(angle)
+        a_sin = numpy.sin(angle)
+
+        self[0][0] = a_cos
+        self[0][1] = a_sin
+        self[0][2] = 0
+        self[1][0] = -a_sin
+        self[1][1] = a_cos
+        self[1][2] = 0
+        self[2][0] = 0
+        self[2][1] = 0
+        self[2][2] = 1
+
+    def scale(self, v: V2f):
+        """
+        SRC: https://github.dev/AcademySoftwareFoundation/Imath/blob/main/src/Imath/ImathMatrix.h#L3172
+
+        Args:
+            v:
+        """
+        self[0] *= v.x
+        self[0] *= v.y
+
+    def translate(self, v: V2f):
+        """
+        SRC: https://github.dev/AcademySoftwareFoundation/Imath/blob/main/src/Imath/ImathMatrix.h#L3216
+
+        Args:
+            v:
+        """
+        self[2] += v.x * self[0] + v.y * self[1]
+
+    def shear(self, v: V2f):
+        """
+        SRC: https://github.dev/AcademySoftwareFoundation/Imath/blob/main/src/Imath/ImathMatrix.h#L3286
+
+        Args:
+            v:
+        """
+        self[0] = self[0] + v.y * self[1]
+        self[1] = self[1] + v.x * self[0]
 
     def to_m44f(self) -> M44f:
-        pass
+        return M44f(
+            [
+                [*self[0], 0],
+                [*self[1], 0],
+                [*self[2], 0],
+                [0, 0, 0, 1],
+            ]
+        )
 
 
 class M44f(BaseMatrix):
@@ -241,14 +294,58 @@ class M44f(BaseMatrix):
     _shape = (4, 4)
     _identity = numpy.identity(4)
 
-    def rotate(self, v: V3f):
-        pass
+    def rotate(self, angle: V3f):
+        """
+        SRC: https://github.dev/AcademySoftwareFoundation/Imath/blob/main/src/Imath/ImathMatrix.h#L4668
+
+        Args:
+            angle: vector of XYZ radian angles
+        """
+
+        cos_a = numpy.cos(angle)
+        sin_a = numpy.sin(angle)
+
+        m00 = cos_a.z * cos_a.y
+        m01 = sin_a.z * cos_a.y
+        m02 = -sin_a.y
+        m10 = -sin_a.z * cos_a.x + cos_a.z * sin_a.y * sin_a.x
+        m11 = cos_a.z * cos_a.x + sin_a.z * sin_a.y * sin_a.x
+        m12 = cos_a.y * sin_a.x
+        m20 = -sin_a.z * -sin_a.x + cos_a.z * sin_a.y * cos_a.x
+        m21 = cos_a.z * -sin_a.x + sin_a.z * sin_a.y * cos_a.x
+        m22 = cos_a.y * cos_a.x
+
+        self[0] = self[0] * m00 + self[1] * m01 + self[2] * m02
+        self[1] = self[0] * m10 + self[1] * m11 + self[2] * m12
+        self[2] = self[0] * m20 + self[1] * m21 + self[2] * m22
 
     def scale(self, v: V3f):
-        pass
+        """
+        SRC: https://github.dev/AcademySoftwareFoundation/Imath/blob/main/src/Imath/ImathMatrix.h#L4779
+
+        Args:
+            v:
+        """
+        self[0] *= v.x
+        self[1] *= v.y
+        self[2] *= v.z
 
     def translate(self, v: V3f):
-        pass
+        """
+        SRC: https://github.dev/AcademySoftwareFoundation/Imath/blob/main/src/Imath/ImathMatrix.h#L4837
+
+        Args:
+            v:
+        """
+        self[3] += v.x * self[0] + v.y * self[1] + v.z * self[2]
 
     def shear(self, v: V3f):
-        pass
+        """
+        SRC: https://github.dev/AcademySoftwareFoundation/Imath/blob/main/src/Imath/ImathMatrix.h#L4906
+
+        Args:
+            v:
+        """
+        for i in range(self._shape[-1]):
+            self[2][i] += v.y * self[0][i] + v.z * self[1][i]
+            self[1][i] += v.x * self[0][i]
