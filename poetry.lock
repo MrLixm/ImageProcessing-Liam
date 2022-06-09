@@ -341,6 +341,17 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "pyside2"
+version = "5.15.2.1"
+description = "Python bindings for the Qt cross-platform application and UI framework"
+category = "main"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, <3.11"
+
+[package.dependencies]
+shiboken2 = "5.15.2.1"
+
+[[package]]
 name = "pyvirtualcam"
 version = "0.9.1"
 description = "Send frames to a virtual camera"
@@ -379,6 +390,14 @@ python-versions = ">=3.8,<3.11"
 
 [package.dependencies]
 numpy = ">=1.17.3,<1.25.0"
+
+[[package]]
+name = "shiboken2"
+version = "5.15.2.1"
+description = "Python / C++ bindings helper module"
+category = "main"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, <3.11"
 
 [[package]]
 name = "tomli"
@@ -435,7 +454,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = "3.9.*"
-content-hash = "8ca785df8c06d6e60e9d2e93021e497d23ab6c0c91df0b6c00c15968ee92b6c2"
+content-hash = "680ee64ae966747c9479e42b43d6cd9eda74ab4c2c3ed1d5a9a455db126d2409"
 
 [metadata.files]
 black = [
@@ -755,6 +774,14 @@ pyopengl = [
     {file = "PyOpenGL-3.1.6-py3-none-any.whl", hash = "sha256:a7139bc3e15d656feae1f7e3ef68c799941ed43fadc78177a23db7e946c20738"},
     {file = "PyOpenGL-3.1.6.tar.gz", hash = "sha256:8ea6c8773927eda7405bffc6f5bb93be81569a7b05c8cac50cd94e969dce5e27"},
 ]
+pyside2 = [
+    {file = "PySide2-5.15.2.1-5.15.2-cp27-cp27m-macosx_10_13_intel.whl", hash = "sha256:b5e1d92f26b0bbaefff67727ccbb2e1b577f2c0164b349b3d6e80febb4c5bde2"},
+    {file = "PySide2-5.15.2.1-5.15.2-cp27-cp27mu-manylinux1_x86_64.whl", hash = "sha256:235240b6ec8206d9fdf0232472c6ef3241783d480425e5b54796f06e39ed23da"},
+    {file = "PySide2-5.15.2.1-5.15.2-cp35.cp36.cp37.cp38.cp39.cp310-abi3-macosx_10_13_intel.whl", hash = "sha256:a9e2e6bbcb5d2ebb421e46e72244a0f4fe0943b2288115f80a863aacc1de1f06"},
+    {file = "PySide2-5.15.2.1-5.15.2-cp35.cp36.cp37.cp38.cp39.cp310-abi3-manylinux1_x86_64.whl", hash = "sha256:23886c6391ebd916e835fa1b5ae66938048504fd3a2934ae3189a96cd5ac0b46"},
+    {file = "PySide2-5.15.2.1-5.15.2-cp35.cp36.cp37.cp38.cp39.cp310-none-win32.whl", hash = "sha256:439509e53cfe05abbf9a99422a2cbad086408b0f9bf5e6f642ff1b13b1f8b055"},
+    {file = "PySide2-5.15.2.1-5.15.2-cp35.cp36.cp37.cp38.cp39.cp310-none-win_amd64.whl", hash = "sha256:af6b263fe63ba6dea7eaebae80aa7b291491fe66f4f0057c0aafe780cc83da9d"},
+]
 pyvirtualcam = [
     {file = "pyvirtualcam-0.9.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:51239623a6874d3c3cc5f170788c948ab41e6f4e254bb9dc3ab0fed60ba84584"},
     {file = "pyvirtualcam-0.9.1-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:eab7ce52105973e02725d278f12a12360d2b335165609dcb7d55a70ce19802a0"},
@@ -797,6 +824,14 @@ scipy = [
     {file = "scipy-1.8.1-cp39-cp39-win32.whl", hash = "sha256:1166514aa3bbf04cb5941027c6e294a000bba0cf00f5cdac6c77f2dad479b434"},
     {file = "scipy-1.8.1-cp39-cp39-win_amd64.whl", hash = "sha256:9dd4012ac599a1e7eb63c114d1eee1bcfc6dc75a29b589ff0ad0bb3d9412034f"},
     {file = "scipy-1.8.1.tar.gz", hash = "sha256:9e3fb1b0e896f14a85aa9a28d5f755daaeeb54c897b746df7a55ccb02b340f33"},
+]
+shiboken2 = [
+    {file = "shiboken2-5.15.2.1-5.15.2-cp27-cp27m-macosx_10_13_intel.whl", hash = "sha256:f890f5611ab8f48b88cfecb716da2ac55aef99e2923198cefcf781842888ea65"},
+    {file = "shiboken2-5.15.2.1-5.15.2-cp27-cp27mu-manylinux1_x86_64.whl", hash = "sha256:87079c07587859a525b9800d60b1be971338ce9b371d6ead81f15ee5a46d448b"},
+    {file = "shiboken2-5.15.2.1-5.15.2-cp35.cp36.cp37.cp38.cp39.cp310-abi3-macosx_10_13_intel.whl", hash = "sha256:ffd3d0ec3d508e592d7ee3885d27fee1f279a49989f734eb130f46d9501273a9"},
+    {file = "shiboken2-5.15.2.1-5.15.2-cp35.cp36.cp37.cp38.cp39.cp310-abi3-manylinux1_x86_64.whl", hash = "sha256:63debfcc531b6a2b4985aa9b71433d2ad3bac542acffc729cc0ecaa3854390c0"},
+    {file = "shiboken2-5.15.2.1-5.15.2-cp35.cp36.cp37.cp38.cp39.cp310-none-win32.whl", hash = "sha256:eb0da44b6fa60c6bd317b8f219e500595e94e0322b33ec5b4e9f406bedaee555"},
+    {file = "shiboken2-5.15.2.1-5.15.2-cp35.cp36.cp37.cp38.cp39.cp310-none-win_amd64.whl", hash = "sha256:a0d0fdeb12b72c8af349b9642ccc67afd783dca449309f45e78cda50272fd6b7"},
 ]
 tomli = [
     {file = "tomli-2.0.1-py3-none-any.whl", hash = "sha256:939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc"},
