@@ -36,6 +36,13 @@ class BaseOpGraph(ABC):
         """
         pass
 
+    @abstractmethod
+    def update_dyn_prop_shader(self, shader: ocio.GpuShaderDesc):
+        """
+        Update the dynamic properties on the given shader.
+        """
+        pass
+
 
 class InToDisplayGradedGraph(BaseOpGraph):
     """
@@ -186,3 +193,6 @@ class InToDisplayGradedGraph(BaseOpGraph):
         ), f"Can't find target view <{self.target_view}>."
 
         return
+
+    def update_dyn_prop_shader(self, shader: ocio.GpuShaderDesc):
+        self.grading.update_all_shader_dyn_prop(shader=shader)
