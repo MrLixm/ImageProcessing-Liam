@@ -115,7 +115,7 @@ class V2f(BaseVector):
     def __init__(self, *args, **kwargs):
         super().__init__()
 
-    def to_v3f(self, third_axis: float) -> V3f:
+    def to_v3f(self, third_axis: float = 0.0) -> V3f:
         return V3f(self.x, self.y, third_axis)
 
 
