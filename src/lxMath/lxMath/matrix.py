@@ -48,7 +48,7 @@ class BaseMatrix(ABC, numpy.ndarray):
     def __new__(cls, *args, **kwargs) -> TMatrix:
 
         if not args and not kwargs:
-            return cls(cls._identity)
+            return cls(cls._identity.copy())
 
         elif args and kwargs:
             raise ValueError(
