@@ -5,15 +5,16 @@ from __future__ import annotations
 import ctypes
 import logging
 from dataclasses import dataclass
-from typing import Union, ClassVar
+from typing import Union, ClassVar, Tuple, Optional
 
 import numpy
 from OpenGL import GL
 import PyOpenColorIO as ocio
 import lxmImageIO as liio
+import lxMath
 
+from OCIOexperiments.vendor.PySignal import Signal
 from . import c
-from . import main
 from . import glUtils
 from .. import grading
 
@@ -22,6 +23,9 @@ logger = logging.getLogger(f"{c.ABR}.gl")
 
 @dataclass
 class Plane:
+    """
+    Create an OpenGL Plane geometry.
+    """
 
     vao: str = None
     vbo_position: str = None
@@ -111,6 +115,80 @@ class Plane:
         return plane
 
 
+class ModelViewProjection:
+    def __init__(self):
+
+        self.mv_matrix: lxMath.M44f = lxMath.M44f()
+        self.proj_matrix: lxMath.M44f = lxMath.M44f()
+
+        self.reset()
+        return
+
+    @property
+    def matrix(self):
+        return self.proj_matrix * self.mv_matrix
+
+    def reset(self):
+        self.mv_matrix.makeIdentity()
+        self.proj_matrix.makeIdentity()
+        return
+
+    def resize(self, width: float, height: float):
+        """
+        Orthographic projection:
+        SRC:  https://en.wikipedia.org/wiki/Orthographic_projection#Geometry
+
+        Args:
+            width:
+            height:
+
+        """
+        # Center image plane
+        l = -width / 2.0
+        r = width / 2.0
+        b = -height / 2.0
+        t = height / 2.0
+        n = -1.0
+        f = 1.0
+
+        # Orthographic projection
+        self.proj_matrix[0][0] = 2.0 / (r - l)
+        self.proj_matrix[1][1] = 2.0 / (t - b)
+        self.proj_matrix[2][2] = -2.0 / (f - n)
+        self.proj_matrix[0][3] = -(r + l) / (r - l)
+        self.proj_matrix[1][3] = -(t + b) / (t - b)
+        self.proj_matrix[2][3] = -(f + n) / (f - n)
+        return
+
+    def update(
+        self,
+        src_size: Tuple[float, float],
+        target_size: Tuple[float, float],
+    ):
+        """
+
+        Args:
+            src_size: image size
+            target_size: widget size
+        """
+        src_size: lxMath.V2f = lxMath.V2f(*src_size)
+        target_size: lxMath.V2f = lxMath.V2f(*target_size)
+
+        image_center: lxMath.V2f = lxMath.V2f(0.0, 0.0) / target_size * 2.0
+
+        size_ratio = target_size / src_size
+        zoom = float(numpy.min(size_ratio))
+
+        self.mv_matrix.makeIdentity()
+        # Flip Y to account for different OIIO/OpenGL image origin
+        self.mv_matrix.scale(lxMath.V3f(1.0, -1.0, 1.0))
+        self.mv_matrix.scale(lxMath.V3f(zoom, zoom, 1.0))
+        self.mv_matrix.translate(image_center.to_v3f(0.0))
+        self.mv_matrix.scale(src_size.to_v3f(1.0))
+
+        return
+
+
 # noinspection PyPep8Naming
 class GLImage:
     """
@@ -118,19 +196,34 @@ class GLImage:
     Image can be changed at anytime with <load> method.
     Image apperance can also be modified interactively using <transform_interactive>.
 
+    Reminder to connect the ``update_sgn`` signal if desired.
+
     Args:
         ocio_operation:
             OCIO operations to apply on the image. Modified in live by the user.
     """
 
-    # noinspection PyTypeChecker
-    def __init__(self, ocio_operation: grading.processes.BaseOpGraph):
+    update_sgn = Signal()
+    """
+    This signal is emitted when a visual update is needed. 
+    """
 
+    # noinspection PyTypeChecker
+    def __init__(self, ocio_operation: Optional[grading.processes.BaseOpGraph] = None):
+
+        # // OCIO
         self.ocioops: grading.processes.BaseOpGraph = ocio_operation
         """
         OCIO operations to apply on the image. Can be modified live by the user.
         """
 
+        # // Options
+        self._resize_ignore: bool = False
+        """
+        True to skip resizeGL()
+        """
+
+        # // Image processing
         self.image: liio.containers.ImageContainer = None
         """
         Whole 32bit float Image.
@@ -140,24 +233,24 @@ class GLImage:
         texture name/identifier
         """
 
+        # // Graphics
+        self._plane: Plane = None
+        """
+        the image plane for viewing the texture
+        """
+        self.mvp = ModelViewProjection()
+
+        # // OpenGL
         self._textures_ids = list()
         self._uniforms_ids = dict()
         self._texture_index_buf = 1
         """
         Buffer for number of texture created in a run.
         """
-
-        self._plane: Plane = None
-        """
-        the image plane for viewing the texture
-        """
-
-        # OpenGL shaders
         self.shader_desc: ocio.GpuShaderDesc = None
         self.shader_program = None
         self.shader_vert = None
         self.shader_frag = None
-
         self.__previous_shader_cache_id = None
         """
         Stores the ID of the last OCIO operation to avoid performing 2 times in a row
@@ -166,6 +259,21 @@ class GLImage:
 
         logger.debug(f"[{self.__class__.__name__}][__init__] Finished.")
         return
+
+    @staticmethod
+    def as_array() -> numpy.ndarray:
+        array: numpy.ndarray = GL.glGetTexImage(
+            GL.GL_TEXTURE_2D, 0, GL.GL_RGB, GL.GL_FLOAT
+        )
+        # SRC: https://stackoverflow.com/a/66388976/13806195
+        array = array.reshape(
+            (
+                array.shape[1],
+                array.shape[0],
+                array.shape[2],
+            )
+        )
+        return array
 
     @property
     def _initialized(self):
@@ -182,7 +290,7 @@ class GLImage:
         """
         assert not self._initialized, "This instance has already been initalized !"
 
-        self._tex_main = glUtils.create_texture2d(self.image.width, self.image.height)
+        self._tex_main = glUtils.create_texture2d(1.0, 1.0)
         self._plane = Plane.create()
 
         self.build_program()
@@ -210,12 +318,8 @@ class GLImage:
         self._use_textures_ocio()
         self._use_uniforms_ocio()
 
-        # Set uniforms TODO check what to do
-        # mvp_mat = self._proj_mat * self._model_view_mat
-        # mvp_mat_loc = GL.glGetUniformLocation(self.shader_program, "mvpMat")
-        # GL.glUniformMatrix4fv(
-        #     mvp_mat_loc, 1, GL.GL_FALSE, self._m44f_to_ndarray(mvp_mat)
-        # )
+        mvp_mat_loc = GL.glGetUniformLocation(self.shader_program, "mvpMat")
+        GL.glUniformMatrix4fv(mvp_mat_loc, 1, GL.GL_FALSE, self.mvp.matrix)
 
         image_tex_loc = GL.glGetUniformLocation(self.shader_program, "imageTex")
         GL.glUniform1i(image_tex_loc, 0)
@@ -235,11 +339,36 @@ class GLImage:
 
         GL.glBindVertexArray(0)
 
-        logger.debug(f"[{self.__class__.__name__}][paintGL] Finished.")
+        # logger.debug(f"[{self.__class__.__name__}][paintGL] Finished.")
         return
 
-    def as_array(self) -> numpy.ndarray:
-        return GL.glGetTexImage(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, GL.GL_FLOAT)
+    def resizeGL(self, w, h):
+        """
+        Called whenever the widget is resized.
+        Args:
+            w: Window width
+            h: Window height
+        """
+        if not self.image:
+            logger.debug(
+                f"[{self.__class__.__name__}][resizeGL] Returned early. "
+                f"No image yet."
+            )
+            return
+        if not self._resize_ignore:
+            logger.debug(
+                f"[{self.__class__.__name__}][resizeGL] Returned early. "
+                f"Resize operation disabled."
+            )
+            return
+
+        GL.glViewport(0, 0, w, h)
+        self.mvp.resize(width=w, height=h)
+        self.mvp.update(
+            src_size=(self.image.width, self.image.height),
+            target_size=(w, h),
+        )
+        self.update_sgn.emit()
 
     def build_program(self, force: bool = False):
         """
@@ -339,71 +468,17 @@ class GLImage:
 
         logger.debug(f"[{self.__class__.__name__}][load] Updated_texture_2d .")
 
-        self._update_model_view_mat()
         self._update_ocio_proc()
 
         logger.debug(f"[{self.__class__.__name__}][load] Finished for {image} .")
         return
 
-    def update(self):
-        # this was originaly a QWidget method to redraw the widget
-        self.paintGL()
-
-    # TODO _update_model_view_mat
-    def _update_model_view_mat(self, update_widget=True):
+    def set_resize_ignored(self, ignored: bool):
         """
-        Re-calculate the model view matrix, which needs to be updated
-        prior to rendering if the image or window size have changed.
-
         Args:
-            update_widget: redraw the window if true
+            ignored: True to skip resizeGL operation when called.
         """
-        if update_widget:
-            self.update()
-        return
-
-    def _update_ocio_proc(
-        self,
-        force=False,
-    ):
-        """
-        Update one or more aspects of the OCIO GPU renderer. Parameters
-        are cached so not providing a parameter maintains the existing
-        state. This will trigger a GL update IF the underlying OCIO ops
-        in the processor have changed.
-
-        Args:
-            force: if True force re-processing even if the proc cacheID is similar
-                to the previously runned one.
-        """
-        assert self.ocioops, "[load] No InToDisplayGradedGraph has been supplied yet !"
-
-        proc = self.ocioops.get_proc()
-        if proc.getCacheID() == self.__previous_shader_cache_id and not force:
-            logger.debug(
-                f"[{self.__class__.__name__}][_update_ocio_proc] Returned early. "
-                f"Current cache ID is similar to previous."
-            )
-            return
-
-        self.__previous_shader_cache_id = proc.getCacheID()
-
-        # noinspection PyArgumentList
-        self.shader_desc = ocio.GpuShaderDesc.CreateShaderDesc(
-            language=ocio.GPU_LANGUAGE_GLSL_4_0
-        )
-        ocio_gpu_proc = proc.getDefaultGPUProcessor()
-        ocio_gpu_proc.extractGpuShaderInfo(self.shader_desc)
-
-        self._allocate_textures()
-        self.build_program()
-
-        # Set initial dynamic property state
-        self.ocioops.grading.update_all_shader_dyn_prop(shader=self.shader_desc)
-        self.update()
-
-        logger.debug(f"[{self.__class__.__name__}][_update_ocio_proc] Finished.")
-        return
+        self._resize_ignore = ignored
 
     def _add_texture(
         self,
@@ -549,3 +624,48 @@ class GLImage:
         previous OCIO shader build.
         """
         self._uniforms_ids.clear()
+
+    def _update_ocio_proc(
+        self,
+        force=False,
+    ):
+        """
+        Update one or more aspects of the OCIO GPU renderer. Parameters
+        are cached so not providing a parameter maintains the existing
+        state. This will trigger a GL update IF the underlying OCIO ops
+        in the processor have changed.
+
+        Args:
+            force: if True force re-processing even if the proc cacheID is similar
+                to the previously runned one.
+        """
+        assert (
+            self.ocioops
+        ), "[_update_ocio_proc] No InToDisplayGradedGraph has been supplied yet !"
+
+        proc = self.ocioops.get_proc()
+        if proc.getCacheID() == self.__previous_shader_cache_id and not force:
+            logger.debug(
+                f"[{self.__class__.__name__}][_update_ocio_proc] Returned early. "
+                f"Current cache ID is similar to previous."
+            )
+            return
+
+        self.__previous_shader_cache_id = proc.getCacheID()
+
+        # noinspection PyArgumentList
+        self.shader_desc = ocio.GpuShaderDesc.CreateShaderDesc(
+            language=ocio.GPU_LANGUAGE_GLSL_4_0
+        )
+        ocio_gpu_proc = proc.getDefaultGPUProcessor()
+        ocio_gpu_proc.extractGpuShaderInfo(self.shader_desc)
+
+        self._allocate_textures()
+        self.build_program()
+
+        # Set initial dynamic property state
+        self.ocioops.update_dyn_prop_shader(shader=self.shader_desc)
+        self.update_sgn.emit()
+
+        logger.debug(f"[{self.__class__.__name__}][_update_ocio_proc] Finished.")
+        return
