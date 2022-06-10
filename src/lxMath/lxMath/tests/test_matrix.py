@@ -209,6 +209,32 @@ class TestM33f(unittest.TestCase):
         testing.assert_array_equal(self.result_a, equal)
         return
 
+    def test_transform_return(self):
+
+        self.m33f = lxMath.M33f()
+        self.m33f.scale(lxMath.V2f(0.5))
+        self.m33f_r = self.m33f.copy()
+        result = self.m33f.scale(lxMath.V2f(1.0))
+
+        self.log()
+        self.assertIs(result, self.m33f)
+        testing.assert_array_equal(result, self.m33f_r)
+
+    def test_arg_m33f(self):
+
+        existing = lxMath.M33f()
+        self.m33f = lxMath.M33f(existing)
+
+        self.log()
+        self.assertIs(existing, self.m33f)
+
+    def test_arg_m33f_invert(self):
+        existing = lxMath.M33f()
+        self.m33f = lxMath.M33f(existing.copy())
+
+        self.log()
+        self.assertIsNot(existing, self.m33f)
+
 
 class TestM44f(unittest.TestCase):
     def setUp(self):
@@ -406,6 +432,32 @@ class TestM44f(unittest.TestCase):
 
         self.log()
         self.assertTrue(self.m44f.isIdentity())
+
+    def test_transform_return(self):
+
+        self.m44f = lxMath.M44f()
+        self.m44f.scale(lxMath.V3f(0.5))
+        self.m44f_r = self.m44f.copy()
+        result = self.m44f.scale(lxMath.V3f(1.0))
+
+        self.log()
+        self.assertIs(result, self.m44f)
+        testing.assert_array_equal(result, self.m44f_r)
+
+    def test_arg_m44f(self):
+
+        existing = lxMath.M44f()
+        self.m44f = lxMath.M44f(existing)
+
+        self.log()
+        self.assertIs(existing, self.m44f)
+
+    def test_arg_m44f_invert(self):
+        existing = lxMath.M44f()
+        self.m44f = lxMath.M44f(existing.copy())
+
+        self.log()
+        self.assertIsNot(existing, self.m44f)
 
 
 if __name__ == "__main__":

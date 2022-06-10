@@ -60,7 +60,7 @@ class BaseMatrix(ABC, numpy.ndarray):
             if len(args) == 1:
 
                 if isinstance(args[0], cls):
-                    return args[0].copy()
+                    return args[0]
 
                 if isinstance(args[0], numpy.ndarray):
                     assert (
@@ -160,7 +160,7 @@ class M33f(BaseMatrix):
     - 1 args out of :
 
         -
-            existing instance::
+            existing instance, return the passed instance::
 
                 M33f(M33f())
 
@@ -183,7 +183,7 @@ class M33f(BaseMatrix):
     _shape = (3, 3)
     _identity = numpy.identity(3)
 
-    def rotate(self, angle: numbers.Number):
+    def rotate(self, angle: numbers.Number) -> M33f:
         """
         SRC: https://github.dev/AcademySoftwareFoundation/Imath/blob/main/src/Imath/ImathMatrix.h#L3117
 
@@ -191,8 +191,9 @@ class M33f(BaseMatrix):
             angle: angle in radian
         """
         self[:] *= M33f().setRotation(angle)
+        return self
 
-    def setRotation(self, angle: numbers.Number):
+    def setRotation(self, angle: numbers.Number) -> M33f:
         """
         SRC: https://github.dev/AcademySoftwareFoundation/Imath/blob/main/src/Imath/ImathMatrix.h#L3092
 
@@ -211,8 +212,9 @@ class M33f(BaseMatrix):
         self[2][0] = 0
         self[2][1] = 0
         self[2][2] = 1
+        return self
 
-    def scale(self, v: V2f):
+    def scale(self, v: V2f) -> M33f:
         """
         SRC: https://github.dev/AcademySoftwareFoundation/Imath/blob/main/src/Imath/ImathMatrix.h#L3172
 
@@ -221,8 +223,9 @@ class M33f(BaseMatrix):
         """
         self[0] *= v.x
         self[0] *= v.y
+        return self
 
-    def translate(self, v: V2f):
+    def translate(self, v: V2f) -> M33f:
         """
         SRC: https://github.dev/AcademySoftwareFoundation/Imath/blob/main/src/Imath/ImathMatrix.h#L3216
 
@@ -230,8 +233,9 @@ class M33f(BaseMatrix):
             v:
         """
         self[2] += v.x * self[0] + v.y * self[1]
+        return self
 
-    def shear(self, v: V2f):
+    def shear(self, v: V2f) -> M33f:
         """
         SRC: https://github.dev/AcademySoftwareFoundation/Imath/blob/main/src/Imath/ImathMatrix.h#L3286
 
@@ -240,6 +244,7 @@ class M33f(BaseMatrix):
         """
         self[0] = self[0] + v.y * self[1]
         self[1] = self[1] + v.x * self[0]
+        return self
 
     def to_m44f(self) -> M44f:
         return M44f(
@@ -271,7 +276,7 @@ class M44f(BaseMatrix):
     - 1 args out of :
 
         -
-            existing instance::
+            existing instance, return the passed instance::
 
                 M44f(M44f())
 
@@ -294,7 +299,7 @@ class M44f(BaseMatrix):
     _shape = (4, 4)
     _identity = numpy.identity(4)
 
-    def rotate(self, angle: V3f):
+    def rotate(self, angle: V3f) -> M44f:
         """
         SRC: https://github.dev/AcademySoftwareFoundation/Imath/blob/main/src/Imath/ImathMatrix.h#L4668
 
@@ -318,8 +323,9 @@ class M44f(BaseMatrix):
         self[0] = self[0] * m00 + self[1] * m01 + self[2] * m02
         self[1] = self[0] * m10 + self[1] * m11 + self[2] * m12
         self[2] = self[0] * m20 + self[1] * m21 + self[2] * m22
+        return self
 
-    def scale(self, v: V3f):
+    def scale(self, v: V3f) -> M44f:
         """
         SRC: https://github.dev/AcademySoftwareFoundation/Imath/blob/main/src/Imath/ImathMatrix.h#L4779
 
@@ -329,8 +335,9 @@ class M44f(BaseMatrix):
         self[0] *= v.x
         self[1] *= v.y
         self[2] *= v.z
+        return self
 
-    def translate(self, v: V3f):
+    def translate(self, v: V3f) -> M44f:
         """
         SRC: https://github.dev/AcademySoftwareFoundation/Imath/blob/main/src/Imath/ImathMatrix.h#L4837
 
@@ -338,8 +345,9 @@ class M44f(BaseMatrix):
             v:
         """
         self[3] += v.x * self[0] + v.y * self[1] + v.z * self[2]
+        return self
 
-    def shear(self, v: V3f):
+    def shear(self, v: V3f) -> M44f:
         """
         SRC: https://github.dev/AcademySoftwareFoundation/Imath/blob/main/src/Imath/ImathMatrix.h#L4906
 
@@ -349,3 +357,5 @@ class M44f(BaseMatrix):
         for i in range(self._shape[-1]):
             self[2][i] += v.y * self[0][i] + v.z * self[1][i]
             self[1][i] += v.x * self[0][i]
+
+        return self
