@@ -19,6 +19,8 @@ TVector = TypeVar("TVector", bound="BaseVector")
 
 class BaseVector(ABC, numpy.ndarray):
 
+    # TODO doctsring needed
+
     _shape: Tuple[int] = NotImplemented
     _default: Tuple[float] = NotImplemented
     _axis: Tuple[str] = NotImplemented
@@ -52,6 +54,9 @@ class BaseVector(ABC, numpy.ndarray):
                         array.shape == cls._shape
                     ), f"Given list arg {args[0]} is not a {cls._shape[0]}x1 vector."
                     return array.view(cls)
+
+                if isinstance(args[0], numbers.Number):
+                    return cls(numpy.full(cls._shape, args[0]))
 
             elif len(args) == cls._shape[0]:
 

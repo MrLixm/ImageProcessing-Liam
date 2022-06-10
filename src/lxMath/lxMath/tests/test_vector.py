@@ -42,10 +42,17 @@ class TestV2f(unittest.TestCase):
         self.assertEqual(self.v2f.x, 0.3)
         self.assertEqual(self.v2f.y, 0.1)
 
-    def test_basic2(self):
+    def test_init_arg_solo(self):
 
-        with self.assertRaises(ValueError) as excp:
-            self.v2f = lxMath.V2f(0.3)
+        self.v2f = lxMath.V2f(0.3)
+        self.log()
+        self.assertEqual(self.v2f.x, 0.3)
+        self.assertEqual(self.v2f.y, 0.3)
+
+        self.v2f = lxMath.V2f(1.6)
+        self.log()
+        self.assertEqual(self.v2f.x, 1.6)
+        self.assertEqual(self.v2f.y, 1.6)
 
     def test_basic_kwarg_xy(self):
 
@@ -220,6 +227,20 @@ class TestV3f(unittest.TestCase):
         self.assertEqual(self.v3f.x, 0.3)
         self.assertEqual(self.v3f.y, 0.1)
         self.assertEqual(self.v3f.z, 12)
+
+    def test_init_arg_solo(self):
+
+        self.v3f = lxMath.V3f(0.3)
+        self.log()
+        self.assertEqual(self.v3f.x, 0.3)
+        self.assertEqual(self.v3f.y, 0.3)
+        self.assertEqual(self.v3f.z, 0.3)
+
+        self.v3f = lxMath.V3f(1.6)
+        self.log()
+        self.assertEqual(self.v3f.x, 1.6)
+        self.assertEqual(self.v3f.y, 1.6)
+        self.assertEqual(self.v3f.z, 1.6)
 
     def test_default(self):
 
